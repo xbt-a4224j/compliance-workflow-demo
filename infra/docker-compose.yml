@@ -1,0 +1,11 @@
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.62
+    container_name: compliance-workflow-demo-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC (app → jaeger)
+      - "4318:4318"     # OTLP HTTP (fallback)
+    restart: unless-stopped
