@@ -1,0 +1,13 @@
+[project]
+name = "compliance-workflow-demo"
+version = "0.1.0"
+description = "Compliance DSL + outage-resilient LLM router demo ((redacted) interview)"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/compliance_workflow_demo"]
