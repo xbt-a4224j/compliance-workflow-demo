@@ -1,6 +1,6 @@
 [project]
 name = "compliance-workflow-demo"
-version = "0.1.0"
+version = "1.0.0"
 description = "Compliance DSL + outage-resilient LLM router demo ((redacted) interview)"
 requires-python = ">=3.12,<3.13"
 dependencies = []
