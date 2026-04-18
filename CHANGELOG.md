@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.1.0...v1.2.0) (2026-04-18)
+
+
+### Features
+
+* **dsl:** add pydantic v2 rule schema with 5 ops ([3d5cee1](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/3d5cee1bca92d7c9adecfd9c21bac3bd6f9df681)), closes [#6](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/6)
+
 # [1.1.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.0.0...v1.1.0) (2026-04-18)
 
 
