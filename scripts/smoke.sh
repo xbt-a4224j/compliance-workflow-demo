@@ -33,4 +33,18 @@ for entry in "${CHECKS[@]}"; do
   echo "[smoke] OK: ${name}"
 done
 
+echo "[smoke] emitting test spans through OTLP pipeline"
+(cd backend && uv run python scripts/otel_smoke.py)
+
+echo "[smoke] verifying spans visible in jaeger (compliance-workflow-demo-smoke service)"
+deadline=$((SECONDS + 15))
+until curl -fsS http://localhost:16686/api/services | grep -q "compliance-workflow-demo-smoke"; do
+  if (( SECONDS >= deadline )); then
+    echo "[smoke] FAIL: compliance-workflow-demo-smoke service did not appear in jaeger within 15s"
+    exit 1
+  fi
+  sleep 1
+done
+echo "[smoke] OK: spans reached jaeger"
+
 echo "[smoke] all checks passed"
