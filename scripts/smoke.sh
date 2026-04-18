@@ -15,8 +15,8 @@ CHECKS=(
 echo "[smoke] stopping stack"
 $COMPOSE down --remove-orphans
 
-echo "[smoke] starting stack"
-$COMPOSE up -d
+echo "[smoke] starting stack (waits on service healthchecks)"
+$COMPOSE up -d --wait
 
 for entry in "${CHECKS[@]}"; do
   IFS='|' read -r name url timeout <<<"$entry"
