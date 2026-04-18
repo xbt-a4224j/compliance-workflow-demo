@@ -3,7 +3,18 @@ name = "compliance-workflow-demo"
 version = "1.0.0"
 description = "Compliance DSL + outage-resilient LLM router demo ((redacted) interview)"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic>=2.9",
+  "httpx>=0.27",
+  "tenacity>=9",
+  "psycopg[binary]>=3.2",
+  "pypdf>=5",
+  "opentelemetry-sdk>=1.28",
+  "opentelemetry-exporter-otlp-proto-grpc>=1.28",
+  "opentelemetry-instrumentation-fastapi>=0.49b0",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -16,6 +27,7 @@ packages = ["src/compliance_workflow_demo"]
 dev = [
   "ruff>=0.6",
   "pytest>=8",
+  "pytest-asyncio>=0.24",
 ]
 
 [tool.ruff]
