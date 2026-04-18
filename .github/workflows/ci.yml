@@ -16,8 +16,11 @@ jobs:
 
       - uses: astral-sh/setup-uv@v3
         with:
-          python-version: "3.12"
           enable-cache: true
+          cache-dependency-glob: "backend/pyproject.toml"
+
+      - name: Install Python 3.12
+        run: uv python install 3.12
 
       - name: Install deps (incl. dev group)
         run: uv sync --dev
