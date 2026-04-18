@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.0.0...v1.1.0) (2026-04-18)
+
+
+### Features
+
+* **obs:** wire OpenTelemetry tracing with OTLP export and smoke check ([dce641e](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/dce641e76a1b0574475a1d66bf79386b3353316f))
+
 # 1.0.0 (2026-04-18)
 
 
