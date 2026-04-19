@@ -2,11 +2,13 @@
 
 Compiles lawyer-written compliance rules (YAML) into a DAG of atomic LLM checks, runs them against SEC prospectuses, and reports pass / fail / degraded per rule. Retries, circuit breakers, and provider failover live underneath; OpenTelemetry spans run from the HTTP handler down to each LLM call.
 
-![Run view with live DAG](scripts/outputs/app_main_screesnhot_dags.png)
+![Run view with live DAG]![img.png](scripts/outputs/img.png)
 
 ## Why this shape
 
 A compliance rule isn't really one yes/no question — it's usually three or four ("past performance disclaimer present *AND* no unqualified guarantees *AND* balanced risk treatment"). Asking an LLM the whole thing at once gives you a confident paragraph with no auditable verdict. So the pipeline does it the other way: the rule is a DSL, the compiler expands it into a DAG of **atomic** LLM checks (each a single boolean question + evidence quote), and aggregators combine those leaves. Shared sub-expressions across rules collapse into one content-addressed node, so a leaf used by N rules runs once.
+
+![Rules tab — authored YAML next to the compiled DAG](scripts/outputs/rule_view.png)
 
 LLMs are unreliable in a second dimension: the providers themselves. Every atomic check goes through a router with per-provider circuit breakers, exponential-backoff retries, and Anthropic → OpenAI failover — so a single 529 doesn't fail the run, but a persistently sick provider gets stopped being hammered.
 
