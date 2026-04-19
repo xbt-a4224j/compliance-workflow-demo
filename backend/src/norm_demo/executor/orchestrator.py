@@ -3,10 +3,12 @@ from __future__ import annotations
 import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Protocol
 
 from compliance_workflow_demo.dsl.graph import ExecutionGraph, GraphNode
 from compliance_workflow_demo.executor.check import ExecutorError, execute_check
+from compliance_workflow_demo.executor.result import CheckResult
 from compliance_workflow_demo.executor.run import (
     NodeFinding,
     OrchestratorEvent,
@@ -20,6 +22,15 @@ from compliance_workflow_demo.router.types import ProviderUnavailable
 EventHandler = Callable[[OrchestratorEvent], Awaitable[None]]
 
 
+class _Cache(Protocol):
+    async def get(self, check_id: str, doc_id: str) -> CheckResult | None: ...
+
+
+class _NoCache:
+    async def get(self, check_id: str, doc_id: str) -> CheckResult | None:
+        return None
+
+
 @dataclass
 class Orchestrator:
     """Walks an ExecutionGraph against a Document.
@@ -27,10 +38,17 @@ class Orchestrator:
     v1: in-process fan-out via asyncio.gather. v2 (out of demo scope) is the
     same execute_check behind a Redis queue + worker pool, swapped at the
     seam where _fan_out_leaves currently lives.
+
+    The optional `cache` is consulted before each leaf execution. A hit
+    short-circuits the LLM call entirely — this is the live payoff of
+    content-addressed (check_id, doc_id) keys (#6 + #14). Cache writes are
+    not the orchestrator's job; persisting the run via db.repo.persist_run
+    populates the cache for future calls.
     """
 
     router: Router
     on_event: EventHandler | None = None
+    cache: _Cache = field(default_factory=_NoCache)
 
     async def run(self, graph: ExecutionGraph, doc: Document) -> RunResult:
         run_id = str(uuid.uuid4())
@@ -98,6 +116,25 @@ class Orchestrator:
         await self._emit(
             OrchestratorEvent(kind="check_started", run_id=run_id, node_id=node.id)
         )
+
+        cached = await self.cache.get(node.id, doc.id)
+        if cached is not None:
+            finding = NodeFinding(
+                node_id=node.id,
+                op=node.op,
+                passed=cached.passed,
+                check_result=cached,
+            )
+            await self._emit(
+                OrchestratorEvent(
+                    kind="check_finished",
+                    run_id=run_id,
+                    node_id=node.id,
+                    finding=finding,
+                )
+            )
+            return _LeafOutcome(finding=finding, error_message=None)
+
         try:
             check = await execute_check(node, doc, self.router)
         except (ProviderUnavailable, ExecutorError) as e:
