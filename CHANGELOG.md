@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.2.0...v1.3.0) (2026-04-19)
+
+
+### Features
+
+* **router:** add anthropic, openai, and mock provider adapters ([8fdefcb](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/8fdefcbdc7e921d4444241f6ad42d182f19fb18d)), closes [#9](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/9)
+
 # [1.2.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.1.0...v1.2.0) (2026-04-18)
 
 
