@@ -12,9 +12,31 @@ import type {
 } from "./types";
 
 const BASE = "/api";
+const TOKEN_KEY = "authToken";
+
+export const getAuthToken = (): string | null => localStorage.getItem(TOKEN_KEY);
+export const setAuthToken = (t: string): void => localStorage.setItem(TOKEN_KEY, t);
+export const clearAuthToken = (): void => localStorage.removeItem(TOKEN_KEY);
+
+/** App-wide event fired when the server rejects the stored token — top-level
+ * component listens and re-shows the token prompt. */
+export const AUTH_EXPIRED_EVENT = "auth-expired";
+
+function authHeaders(): Record<string, string> {
+  const t = getAuthToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
+function handle401(status: number) {
+  if (status === 401) {
+    clearAuthToken();
+    window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+  }
+}
 
 async function getJson<T>(path: string): Promise<T> {
-  const r = await fetch(`${BASE}${path}`);
+  const r = await fetch(`${BASE}${path}`, { headers: authHeaders() });
+  handle401(r.status);
   if (!r.ok) throw new Error(`${path}: ${r.status} ${r.statusText}`);
   return (await r.json()) as T;
 }
@@ -22,9 +44,10 @@ async function getJson<T>(path: string): Promise<T> {
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const r = await fetch(`${BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(body),
   });
+  handle401(r.status);
   if (!r.ok) {
     const detail = await r.text();
     throw new Error(`${path}: ${r.status} ${r.statusText}\n${detail}`);
@@ -40,6 +63,13 @@ export const api = {
   createRun: (doc_id: string, rule_ids?: string[]) =>
     postJson<CreateRunResponse>("/runs", { doc_id, rule_ids: rule_ids ?? null }),
   getRun: (run_id: string) => getJson<GetRunResponse>(`/runs/${run_id}`),
-  streamUrl: (run_id: string) => `${BASE}/runs/${run_id}/stream`,
+  streamUrl: (run_id: string) => {
+    // EventSource can't send custom headers, so the token rides as a query
+    // param (accepted by require_token as a fallback to the Bearer header).
+    const t = getAuthToken();
+    return t
+      ? `${BASE}/runs/${run_id}/stream?token=${encodeURIComponent(t)}`
+      : `${BASE}/runs/${run_id}/stream`;
+  },
   dbOverview: () => getJson<DbOverview>("/admin/db/overview"),
 };

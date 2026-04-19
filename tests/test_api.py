@@ -17,12 +17,17 @@ from compliance_workflow_demo.router import (
 )
 
 
+_TEST_TOKEN = "test-token-xyz"
+_AUTH_HEADER = {"Authorization": f"Bearer {_TEST_TOKEN}"}
+
+
 @pytest.fixture(autouse=True)
-def _no_api_keys(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Force the lifespan to fall back to MockAdapter — tests never hit a
-    real provider regardless of whether the developer's shell has keys set."""
+def _env_setup(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Force the lifespan to fall back to MockAdapter (no real-provider keys)
+    and set a dummy AUTH_TOKEN so create_app doesn't refuse to start."""
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("AUTH_TOKEN", _TEST_TOKEN)
 
 
 def _passing_router() -> Router:
@@ -42,11 +47,40 @@ def _passing_router() -> Router:
 
 @pytest.fixture
 def client():
-    """TestClient with the LLM router swapped for one that always passes."""
+    """TestClient with the LLM router swapped for one that always passes, the
+    bearer token attached, and DB wiring disabled (tests must not pick up
+    cached findings from prior runs or local-dev activity)."""
+    app = create_app()
+    with TestClient(app, headers=_AUTH_HEADER) as c:
+        _rtr = _passing_router()
+        c.app.state.router = _rtr
+        c.app.state.adapters = _rtr.adapters
+        c.app.state.db_url = None  # force NoCache + skip persist_run
+        yield c
+
+
+# --- auth -----------------------------------------------------------------
+
+def test_health_does_not_require_auth() -> None:
+    """Probes and the UI's startup check hit /health before a token exists."""
     app = create_app()
     with TestClient(app) as c:
-        c.app.state.router = _passing_router()
-        yield c
+        r = c.get("/health")
+        assert r.status_code == 200
+
+
+def test_protected_endpoint_401_without_token() -> None:
+    app = create_app()
+    with TestClient(app) as c:
+        r = c.get("/rules")
+        assert r.status_code == 401
+
+
+def test_protected_endpoint_401_with_wrong_token() -> None:
+    app = create_app()
+    with TestClient(app, headers={"Authorization": "Bearer nope"}) as c:
+        r = c.get("/rules")
+        assert r.status_code == 401
 
 
 # --- resource endpoints ----------------------------------------------------
@@ -156,10 +190,13 @@ async def test_sse_stream_emits_events_in_order(monkeypatch: pytest.MonkeyPatch)
     transport = ASGITransport(app=app)
     # Manually trigger lifespan startup — ASGITransport doesn't auto-run it.
     async with (
-        AsyncClient(transport=transport, base_url="http://test") as ac,
+        AsyncClient(transport=transport, base_url="http://test", headers=_AUTH_HEADER) as ac,
         app.router.lifespan_context(app),
     ):
-        app.state.router = _passing_router()
+        _rtr = _passing_router()
+        app.state.router = _rtr
+        app.state.adapters = _rtr.adapters
+        app.state.db_url = None
 
         create = await ac.post(
             "/runs", json={"rule_ids": ["NOGUAR"], "doc_id": "synth_fund_01"}
@@ -191,7 +228,7 @@ async def test_sse_stream_404_for_unknown_run(monkeypatch: pytest.MonkeyPatch) -
     app = create_app()
     transport = ASGITransport(app=app)
     async with (
-        AsyncClient(transport=transport, base_url="http://test") as ac,
+        AsyncClient(transport=transport, base_url="http://test", headers=_AUTH_HEADER) as ac,
         app.router.lifespan_context(app),
     ):
             r = await ac.get("/runs/nonexistent/stream")
@@ -209,10 +246,13 @@ async def test_end_to_end_run_flow(monkeypatch: pytest.MonkeyPatch) -> None:
     app = create_app()
     transport = ASGITransport(app=app)
     async with (
-        AsyncClient(transport=transport, base_url="http://test") as ac,
+        AsyncClient(transport=transport, base_url="http://test", headers=_AUTH_HEADER) as ac,
         app.router.lifespan_context(app),
     ):
-            app.state.router = _passing_router()
+            _rtr = _passing_router()
+            app.state.router = _rtr
+            app.state.adapters = _rtr.adapters
+            app.state.db_url = None
 
             create = await ac.post(
                 "/runs", json={"rule_ids": ["FEES"], "doc_id": "synth_fund_05"}

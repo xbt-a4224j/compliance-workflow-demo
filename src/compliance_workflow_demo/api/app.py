@@ -6,12 +6,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 import logging
 
+from compliance_workflow_demo.api.auth import require_token
 from compliance_workflow_demo.api.resources import router as resources_router
 from compliance_workflow_demo.api.runs import router as runs_router
 from compliance_workflow_demo.api.state import RunRegistry
@@ -110,6 +111,16 @@ def create_app() -> FastAPI:
     # to wire. Without this, keys that live only in .env are silently skipped.
     load_dotenv(BACKEND_ROOT / ".env")
     configure_tracing()
+
+    # Auth is required. No escape hatch — refusing to start without
+    # AUTH_TOKEN keeps the service from accidentally running open.
+    auth_token = os.environ.get("AUTH_TOKEN", "").strip()
+    if not auth_token:
+        raise RuntimeError(
+            "AUTH_TOKEN must be set in the environment (see .env.example). "
+            "The API refuses to start without it."
+        )
+
     # Move Swagger UI off /docs so our GET /docs (corpus listing) wins.
     app = FastAPI(
         title="compliance-workflow-demo",
@@ -117,25 +128,34 @@ def create_app() -> FastAPI:
         docs_url="/api-docs",
         redoc_url="/api-redoc",
     )
+    app.state.auth_token = auth_token
     FastAPIInstrumentor.instrument_app(app)
 
-    # Open CORS for the local Vite dev server (5173) and create-react-app
-    # default (3000). Tightened in production; demo scope only.
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[
+    # CORS allowlist from CORS_ORIGINS (comma-separated) or the local-dev
+    # defaults. Kept narrow — even the API docs + SSE stream come from here.
+    cors_env = os.environ.get("CORS_ORIGINS", "").strip()
+    allow_origins = (
+        [o.strip() for o in cors_env.split(",") if o.strip()]
+        if cors_env
+        else [
             "http://localhost:5173",
             "http://localhost:3000",
             "http://127.0.0.1:5173",
             "http://127.0.0.1:3000",
-        ],
+        ]
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allow_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
-    app.include_router(runs_router)
-    app.include_router(resources_router)
+    # Both routers require the bearer token — /health stays open so probes
+    # and the frontend's initial connectivity check don't trip auth.
+    app.include_router(runs_router, dependencies=[Depends(require_token)])
+    app.include_router(resources_router, dependencies=[Depends(require_token)])
 
     @app.get("/health")
     async def health() -> dict[str, str]:

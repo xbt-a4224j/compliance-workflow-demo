@@ -1,18 +1,26 @@
 import { useEffect, useState } from "react";
 
-import { api } from "./api";
+import {
+  AUTH_EXPIRED_EVENT,
+  api,
+  getAuthToken,
+  setAuthToken,
+} from "./api";
 import { AdminView } from "./components/AdminView";
 import { DagView } from "./components/DagView";
 import { DocumentPane } from "./components/DocumentPane";
 import { RuleEditor } from "./components/RuleEditor";
 import { RunSelector } from "./components/RunSelector";
 import { RunSummary } from "./components/RunSummary";
+import { TokenPrompt } from "./components/TokenPrompt";
 import { useRunStream } from "./hooks/useRunStream";
 import type { CreateRunResponse, DocSummary, RuleSummary } from "./types";
 
 type View = "run" | "rules" | "admin";
 
 export default function App() {
+  const [token, setToken] = useState<string | null>(() => getAuthToken());
+  const [authError, setAuthError] = useState<string | null>(null);
   const [view, setView] = useState<View>("run");
   const [rules, setRules] = useState<RuleSummary[]>([]);
   const [docs, setDocs] = useState<DocSummary[]>([]);
@@ -20,6 +28,30 @@ export default function App() {
   const [run, setRun] = useState<CreateRunResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // The API layer fires this event when any response comes back 401 — the
+  // stored token has been cleared, re-prompt the user.
+  useEffect(() => {
+    const onExpired = () => {
+      setToken(null);
+      setAuthError("Token rejected. Check AUTH_TOKEN in .env and try again.");
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
+  }, []);
+
+  const handleTokenSave = (t: string) => {
+    setAuthToken(t);
+    setToken(t);
+    setAuthError(null);
+  };
+
+  // Block the whole app until we have a token — no partial render with
+  // half-populated state. Matches the backend's "auth required, no escape
+  // hatch" contract.
+  if (!token) {
+    return <TokenPrompt onSave={handleTokenSave} error={authError ?? undefined} />;
+  }
 
   // Bootstrap: load rules + docs once. Rules feed the swimlane labels.
   useEffect(() => {

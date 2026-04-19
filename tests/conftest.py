@@ -3,6 +3,12 @@ from __future__ import annotations
 import os
 from collections.abc import AsyncIterator
 
+# create_app() evaluates at import-time (module-level `app = create_app()` in
+# api/app.py) and refuses to start without AUTH_TOKEN. Set a dummy value here
+# before any test module imports it. The autouse _env_setup fixture in
+# test_api.py refreshes this to the same value for each test.
+os.environ.setdefault("AUTH_TOKEN", "test-token-xyz")
+
 import psycopg
 import pytest
 import pytest_asyncio
