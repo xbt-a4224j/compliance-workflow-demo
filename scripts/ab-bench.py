@@ -151,13 +151,17 @@ def main() -> None:
     print(f"[bench] sleeping {args.flush_wait}s for batch-span exporter to flush to Jaeger…")
     time.sleep(args.flush_wait)
 
-    print(f"[bench] querying Jaeger for orchestrator.run durations…")
+    print("[bench] querying Jaeger for orchestrator.run durations…")
     durations: dict[str, list[float]] = {}
     for provider in PROVIDERS:
         ds = [d for d in (fetch_duration_ms(t) for t in trace_ids[provider]) if d is not None]
         durations[provider] = ds
-        if len(ds) < len(trace_ids[provider]):
-            print(f"  ({len(trace_ids[provider]) - len(ds)} {provider} traces not yet visible — try --flush-wait higher)")
+        missing = len(trace_ids[provider]) - len(ds)
+        if missing:
+            print(
+                f"  ({missing} {provider} traces not yet visible — "
+                f"try --flush-wait higher)"
+            )
 
     print()
     print(f"{'provider':<12} {'n':>3} {'p50':>9} {'p95':>9} {'mean':>9} {'stdev':>9}")
@@ -169,20 +173,32 @@ def main() -> None:
         if s["n"] == 0:
             print(f"{provider:<12} {'0':>3} (no traces)")
             continue
-        print(f"{provider:<12} {s['n']:>3} {s['p50']:>7.0f}ms {s['p95']:>7.0f}ms {s['mean']:>7.0f}ms {s['stdev']:>7.0f}ms")
+        print(
+            f"{provider:<12} {s['n']:>3} {s['p50']:>7.0f}ms {s['p95']:>7.0f}ms "
+            f"{s['mean']:>7.0f}ms {s['stdev']:>7.0f}ms"
+        )
 
     a, o = summaries["anthropic"], summaries["openai"]
     if a.get("n") and o.get("n"):
-        faster, slower = ("anthropic", "openai") if a["mean"] < o["mean"] else ("openai", "anthropic")
+        if a["mean"] < o["mean"]:
+            faster, slower = "anthropic", "openai"
+        else:
+            faster, slower = "openai", "anthropic"
         fmean = summaries[faster]["mean"]
         smean = summaries[slower]["mean"]
         diff = smean - fmean
         pct = 100 * diff / smean
         print()
-        print(f"→ {faster} is {diff:.0f}ms faster on mean ({pct:.0f}%) over n={a['n']}+{o['n']} samples")
+        print(
+            f"→ {faster} is {diff:.0f}ms faster on mean ({pct:.0f}%) "
+            f"over n={a['n']}+{o['n']} samples"
+        )
 
     print()
-    print(f"[bench] in Jaeger Search, filter  Service=compliance-workflow-demo  Tags=run.primary=<provider>")
+    print(
+        "[bench] in Jaeger Search, filter  "
+        "Service=compliance-workflow-demo  Tags=run.primary=<provider>"
+    )
 
     if not args.no_chart:
         out_path = args.out or DEFAULT_OUT_DIR / f"ab_{datetime.now():%Y%m%d_%H%M%S}.png"
@@ -190,7 +206,10 @@ def main() -> None:
             write_chart(durations, args.doc, args.n, out_path)
             print(f"[bench] chart → {out_path}")
         except ImportError:
-            print("[bench] matplotlib not installed — skipping chart. `uv sync --group dev` to enable.")
+            print(
+                "[bench] matplotlib not installed — skipping chart. "
+                "`uv sync --group dev` to enable."
+            )
 
 
 if __name__ == "__main__":

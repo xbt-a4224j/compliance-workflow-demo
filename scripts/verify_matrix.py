@@ -108,7 +108,10 @@ async def main() -> None:
     parser.add_argument(
         "--serial",
         action="store_true",
-        help="Run cells one at a time (slower; workaround for #22 noisy-neighbor flutter, won't-fix)",
+        help=(
+            "Run cells one at a time (slower; workaround for #22 "
+            "noisy-neighbor flutter, won't-fix)"
+        ),
     )
     args = parser.parse_args()
 

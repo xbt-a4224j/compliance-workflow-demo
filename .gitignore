@@ -46,3 +46,4 @@ scripts/outputs/ab_2*.png
 # Private local notes — not part of the project
 CLAUDE.md
 DEMO.md
+/reviews/

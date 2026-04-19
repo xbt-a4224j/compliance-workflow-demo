@@ -16,7 +16,6 @@ from compliance_workflow_demo.router import (
     Router,
 )
 
-
 _TEST_TOKEN = "test-token-xyz"
 _AUTH_HEADER = {"Authorization": f"Bearer {_TEST_TOKEN}"}
 

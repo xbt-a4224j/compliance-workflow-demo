@@ -8,7 +8,8 @@ from compliance_workflow_demo.router.pricing import PRICES, cost_usd
 def test_known_model_anthropic_haiku():
     # Haiku 4.5: $0.25 input, $1.25 output per 1M tokens.
     # 1M in + 1M out = 0.25 + 1.25 = 1.50
-    assert cost_usd("anthropic", "claude-haiku-4-5-20251001", 1_000_000, 1_000_000) == pytest.approx(1.50)
+    actual = cost_usd("anthropic", "claude-haiku-4-5-20251001", 1_000_000, 1_000_000)
+    assert actual == pytest.approx(1.50)
 
 
 def test_known_model_openai_gpt4o_mini():
@@ -20,10 +21,11 @@ def test_known_model_openai_gpt4o_mini():
 def test_input_and_output_rates_are_not_transposed():
     # Asymmetric token counts make a transposition detectable: if rates were
     # swapped, charging 1M in (cheap) at the output rate would explode the cost.
-    in_rate, out_rate = PRICES[("anthropic", "claude-opus-4-7-20260401")]
+    model = "claude-opus-4-7-20260401"
+    in_rate, out_rate = PRICES[("anthropic", model)]
     assert in_rate < out_rate, "this test assumes input is cheaper than output"
-    assert cost_usd("anthropic", "claude-opus-4-7-20260401", 1_000_000, 0) == pytest.approx(in_rate)
-    assert cost_usd("anthropic", "claude-opus-4-7-20260401", 0, 1_000_000) == pytest.approx(out_rate)
+    assert cost_usd("anthropic", model, 1_000_000, 0) == pytest.approx(in_rate)
+    assert cost_usd("anthropic", model, 0, 1_000_000) == pytest.approx(out_rate)
 
 
 def test_zero_tokens_zero_cost():

@@ -94,7 +94,10 @@ async def db_overview(request: Request) -> DbOverview:
             await cur.execute(sql)
             cols = [c.name for c in cur.description]
             return [
-                {c: (v.isoformat() if hasattr(v, "isoformat") else v) for c, v in zip(cols, row)}
+                {
+                    c: (v.isoformat() if hasattr(v, "isoformat") else v)
+                    for c, v in zip(cols, row, strict=True)
+                }
                 for row in await cur.fetchall()
             ]
 
