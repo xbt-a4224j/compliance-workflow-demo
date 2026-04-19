@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.8.0...v1.9.0) (2026-04-19)
+
+
+### Features
+
+* **api:** FastAPI endpoints with SSE per-run streaming ([e11359a](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/e11359af0fe0656942264e590d6ed01cd7edb07b)), closes [#19](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/19)
+
 # [1.8.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.7.0...v1.8.0) (2026-04-19)
 
 
