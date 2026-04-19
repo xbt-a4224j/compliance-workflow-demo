@@ -86,3 +86,9 @@ class DbOverview(BaseModel):
     runs: list[dict]
     findings: list[dict]
     router_calls: list[dict]
+
+
+class LogsResponse(BaseModel):
+    """In-memory log buffer snapshot for the UI Logs tab. Newest entry first."""
+    capacity: int
+    entries: list  # list[LogEntry] — kept loose to avoid a circular import

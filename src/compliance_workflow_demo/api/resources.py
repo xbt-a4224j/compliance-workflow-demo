@@ -7,6 +7,7 @@ from compliance_workflow_demo.api.schemas import (
     DocPage,
     DocSummary,
     DocText,
+    LogsResponse,
     RuleDetail,
     RuleSummary,
 )
@@ -125,6 +126,17 @@ async def db_overview(request: Request) -> DbOverview:
     return DbOverview(
         connected=True, runs=runs, findings=findings, router_calls=router_calls
     )
+
+
+@router.get("/admin/logs", response_model=LogsResponse)
+async def get_logs(
+    request: Request, min_level: str = "INFO", limit: int = 200
+) -> LogsResponse:
+    """Snapshot of the in-memory log buffer. Newest first. `min_level` filters
+    to WARNING+ / ERROR / etc; `limit` caps the response size."""
+    buf = request.app.state.log_buffer
+    entries = buf.snapshot(min_level=min_level, limit=limit)
+    return LogsResponse(capacity=buf._buf.maxlen or 0, entries=entries)
 
 
 def _extract_title(stem: str, doc) -> str:

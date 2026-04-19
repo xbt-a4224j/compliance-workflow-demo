@@ -13,6 +13,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 import logging
 
 from compliance_workflow_demo.api.auth import require_token
+from compliance_workflow_demo.api.log_buffer import install as install_log_buffer
 from compliance_workflow_demo.api.resources import router as resources_router
 from compliance_workflow_demo.api.runs import router as runs_router
 from compliance_workflow_demo.api.state import RunRegistry
@@ -68,6 +69,11 @@ def _build_adapters() -> list[ProviderAdapter]:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Startup loads everything into app.state; shutdown cancels in-flight runs."""
+    # Install the log buffer first so subsequent startup messages are captured
+    # and visible in the UI Logs tab from the very first paint.
+    app.state.log_buffer = install_log_buffer()
+    log = logging.getLogger(__name__)
+
     rules_dir = Path(os.environ.get("RULES_DIR", DEFAULT_RULES_DIR))
     corpus_dir = Path(os.environ.get("CORPUS_DIR", DEFAULT_CORPUS_DIR))
 
@@ -79,6 +85,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.adapters = adapters
     app.state.router = Router(adapters=list(adapters))
     app.state.registry = RunRegistry()
+    log.info(
+        "loaded %d rules, %d docs, providers=%s",
+        len(rules),
+        len(app.state.docs),
+        [a.provider for a in adapters],
+    )
 
     # Best-effort DB setup: apply migrations, remember the URL so runners can
     # open per-run connections. If Postgres isn't reachable (demo running
@@ -90,10 +102,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await apply_migrations(conn)
         await conn.close()
         app.state.db_url = database_url()
+        log.info("postgres connected; runs will be persisted")
     except Exception as e:
-        logging.getLogger(__name__).warning(
-            "postgres unavailable — runs won't be persisted (%s)", e
-        )
+        log.warning("postgres unavailable — runs won't be persisted (%s)", e)
 
     yield
 

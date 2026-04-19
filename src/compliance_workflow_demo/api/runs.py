@@ -25,6 +25,7 @@ from compliance_workflow_demo.router.router import Router
 from compliance_workflow_demo.router.types import RouterCallRecord
 
 router = APIRouter()
+log = logging.getLogger(__name__)
 
 
 @router.post("/runs", response_model=CreateRunResponse)
@@ -92,6 +93,13 @@ async def create_run(req: CreateRunRequest, request: Request) -> CreateRunRespon
                 graph, doc, run_id=run_id, primary=req.primary
             )
             state.result = result
+            log.info(
+                "run %s finished status=%s rules=%s doc=%s",
+                run_id,
+                result.status,
+                rule_label,
+                req.doc_id,
+            )
 
             # End-of-run write: run + findings + router_calls in one
             # transaction. Use doc.id (sha256) not req.doc_id (stem) so the
@@ -113,15 +121,23 @@ async def create_run(req: CreateRunRequest, request: Request) -> CreateRunRespon
                     finally:
                         await conn.close()
                 except Exception as e:  # noqa: BLE001 — best-effort persist
-                    logging.getLogger(__name__).warning(
-                        "persist_run failed for %s: %s", run_id, e
-                    )
+                    log.warning("persist_run failed for %s: %s", run_id, e)
             return result
+        except Exception as e:  # noqa: BLE001 — surface in logs even if SSE caught it
+            log.error("run %s crashed: %s", run_id, e, exc_info=True)
+            raise
         finally:
             state.completed.set()
 
     state.task = asyncio.create_task(runner())
     registry.add(state)
+    log.info(
+        "run %s started rules=%s doc=%s primary=%s",
+        run_id,
+        rule_label,
+        req.doc_id,
+        req.primary or "default",
+    )
 
     # Trace_id from the active HTTP span lets the client open this run in
     # Jaeger directly, or paste two trace_ids into Jaeger's Compare view.

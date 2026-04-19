@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass, field
 
@@ -20,6 +21,7 @@ from compliance_workflow_demo.router.types import (
 )
 
 _tracer = trace.get_tracer(__name__)
+_log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -78,9 +80,10 @@ class Router:
     ) -> CompletionResponse:
         last_transient: Exception | None = None
 
-        for adapter in self.adapters:
+        for idx, adapter in enumerate(self.adapters):
             breaker = self._breakers[adapter.provider]
             if not await breaker.allow():
+                _log.warning("breaker open for %s — skipping", adapter.provider)
                 continue
 
             try:
@@ -103,8 +106,20 @@ class Router:
                 # breaker and try the next adapter.
                 await breaker.record_failure()
                 last_transient = e
+                if idx + 1 < len(self.adapters):
+                    _log.warning(
+                        "%s exhausted retries (%s) — failing over to %s",
+                        adapter.provider,
+                        e,
+                        self.adapters[idx + 1].provider,
+                    )
                 continue
 
+        _log.error(
+            "all %d providers exhausted (last error: %s)",
+            len(self.adapters),
+            last_transient,
+        )
         raise ProviderUnavailable(
             f"all {len(self.adapters)} providers exhausted"
         ) from last_transient

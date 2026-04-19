@@ -112,3 +112,18 @@ export interface OrchestratorEvent {
 
 // UI-only enrichment: per-node lifecycle status
 export type NodeStatus = "pending" | "running" | "passed" | "failed" | "degraded";
+
+export type LogLevel = "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL";
+
+export interface LogEntry {
+  id: number;
+  ts: string;
+  level: LogLevel;
+  logger: string;
+  message: string;
+}
+
+export interface LogsResponse {
+  capacity: number;
+  entries: LogEntry[];
+}

@@ -7,6 +7,8 @@ import type {
   DocSummary,
   DocText,
   GetRunResponse,
+  LogLevel,
+  LogsResponse,
   RuleDetail,
   RuleSummary,
 } from "./types";
@@ -72,4 +74,6 @@ export const api = {
       : `${BASE}/runs/${run_id}/stream`;
   },
   dbOverview: () => getJson<DbOverview>("/admin/db/overview"),
+  logs: (minLevel: LogLevel = "INFO", limit = 200) =>
+    getJson<LogsResponse>(`/admin/logs?min_level=${minLevel}&limit=${limit}`),
 };

@@ -10,6 +10,7 @@ import {
 import { AdminView } from "./components/AdminView";
 import { DagView } from "./components/DagView";
 import { DocumentPane } from "./components/DocumentPane";
+import { LogsView } from "./components/LogsView";
 import { RuleEditor } from "./components/RuleEditor";
 import { RunSelector } from "./components/RunSelector";
 import { RunSummary } from "./components/RunSummary";
@@ -17,7 +18,7 @@ import { TokenPrompt } from "./components/TokenPrompt";
 import { useRunStream } from "./hooks/useRunStream";
 import type { CreateRunResponse, DocSummary, RuleSummary } from "./types";
 
-type View = "run" | "rules" | "admin";
+type View = "run" | "rules" | "admin" | "logs";
 
 export default function App() {
   const [token, setToken] = useState<string | null>(() => getAuthToken());
@@ -93,6 +94,7 @@ export default function App() {
           <ViewTab active={view === "run"} onClick={() => setView("run")}>Run</ViewTab>
           <ViewTab active={view === "rules"} onClick={() => setView("rules")}>Rules</ViewTab>
           <ViewTab active={view === "admin"} onClick={() => setView("admin")}>Admin</ViewTab>
+          <ViewTab active={view === "logs"} onClick={() => setView("logs")}>Logs</ViewTab>
           <button
             onClick={() => {
               clearAuthToken();
@@ -164,8 +166,10 @@ export default function App() {
         </div>
       ) : view === "rules" ? (
         <RuleEditor rules={rules} />
-      ) : (
+      ) : view === "admin" ? (
         <AdminView />
+      ) : (
+        <LogsView />
       )}
     </div>
   );
