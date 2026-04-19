@@ -1,3 +1,16 @@
+# [1.8.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.7.0...v1.8.0) (2026-04-19)
+
+
+### Bug Fixes
+
+* **router:** omit deprecated 'temperature' for Opus 4.x models ([4beef30](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/4beef3035afc1f0142bfac5999312048dc371acb))
+
+
+### Features
+
+* **ingest:** pypdf parser + tiktoken chunker with page-stamped DocChunks ([59cd268](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/59cd268177d6436b83cf285bd0db0b254dfc1e33))
+* **rules+executor:** five FINRA-2210 rules + prompt tuning + hallucination guard ([4715f48](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/4715f4832ec5ea39d2e8e5c46491278c8b1800b0))
+
 # [1.7.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.6.0...v1.7.0) (2026-04-19)
 
 
