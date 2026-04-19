@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import statistics
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -19,10 +21,22 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
 API = "http://localhost:8765"
 JAEGER = "http://localhost:16686"
 PROVIDERS = ("anthropic", "openai")
 DEFAULT_OUT_DIR = Path(__file__).resolve().parent / "outputs"
+
+AUTH_TOKEN = os.environ.get("AUTH_TOKEN", "").strip()
+if not AUTH_TOKEN:
+    sys.exit(
+        "[bench] AUTH_TOKEN is unset — the API requires a bearer token on every "
+        "request. Set AUTH_TOKEN in .env (same value the frontend prompts for)."
+    )
+AUTH_HEADER = {"Authorization": f"Bearer {AUTH_TOKEN}"}
 
 
 def post_run(doc: str, primary: str) -> tuple[str, str]:
@@ -30,7 +44,7 @@ def post_run(doc: str, primary: str) -> tuple[str, str]:
     req = urllib.request.Request(
         f"{API}/runs",
         data=body,
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", **AUTH_HEADER},
         method="POST",
     )
     with urllib.request.urlopen(req) as r:
@@ -43,8 +57,9 @@ def wait_for_run(run_id: str, timeout: float = 180.0) -> None:
     finished. Backend runs tasks concurrently, so the wall-clock wait here is
     the slowest task in the batch, not the sum."""
     deadline = time.time() + timeout
+    req = urllib.request.Request(f"{API}/runs/{run_id}", headers=AUTH_HEADER)
     while time.time() < deadline:
-        with urllib.request.urlopen(f"{API}/runs/{run_id}") as r:
+        with urllib.request.urlopen(req) as r:
             d = json.load(r)
         if d.get("result") is not None:
             return

@@ -9,15 +9,30 @@
 
 set -euo pipefail
 
+cd "$(git rev-parse --show-toplevel)"
+
 DOC="${1:-synth_fund_01}"
 API="${API:-http://localhost:8765}"
 JAEGER="${JAEGER:-http://localhost:16686}"
 FLUSH_WAIT="${FLUSH_WAIT:-12}"
 
+# Pull AUTH_TOKEN from .env if not already in the env. Same contract the
+# Python scripts use via python-dotenv. Fail loud before posting any runs —
+# silent 401s in the middle of a demo are worse than a clear error up front.
+if [[ -z "${AUTH_TOKEN:-}" && -f .env ]]; then
+  AUTH_TOKEN=$(grep -E '^AUTH_TOKEN=' .env | tail -1 | cut -d= -f2-)
+fi
+if [[ -z "${AUTH_TOKEN:-}" ]]; then
+  echo "[ab] AUTH_TOKEN is unset — the API requires a bearer token on every request." >&2
+  echo "[ab] Set AUTH_TOKEN in .env (same value the frontend prompts for)." >&2
+  exit 1
+fi
+
 curl_run() {
   local primary="$1"
   curl -fsS -X POST "$API/runs" \
     -H 'Content-Type: application/json' \
+    -H "Authorization: Bearer $AUTH_TOKEN" \
     -d "{\"doc_id\":\"$DOC\",\"primary\":\"$primary\"}" \
     | python3 -c 'import sys,json;print(json.load(sys.stdin)["trace_id"])'
 }
