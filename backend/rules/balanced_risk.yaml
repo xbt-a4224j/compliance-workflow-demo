@@ -1,0 +1,11 @@
+id: BAL
+name: Risks disclosed alongside potential gains
+# ALL_OF: a balanced presentation requires BOTH risk concepts. Mentioning
+# only one (e.g. "investing involves risk" without "you can lose your
+# principal") is insufficient.
+op: ALL_OF
+children:
+  - op: REQUIRES_CLAUSE
+    clause: the risks of investing in this fund are clearly disclosed
+  - op: REQUIRES_CLAUSE
+    clause: the possibility of losing the principal investment is mentioned

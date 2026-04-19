@@ -1,0 +1,16 @@
+id: FWD
+name: Forward-looking statements include safe-harbor disclaimer
+op: REQUIRES_CLAUSE
+# Vacuously true when no forward-looking statements appear — conditional
+# rule, not unconditional ("IF projections THEN safe-harbor").
+#
+# WHAT COUNTS as forward-looking: SPECIFIC FORECASTS of future returns or
+# future-period performance — concrete numbers, target percentages, "we
+# expect 18-22%", "2026 outlook", projected earnings growth.
+#
+# WHAT DOES NOT COUNT (do not flag these):
+#   - Past performance reporting ("delivered 14% last year")
+#   - Investment strategy / objective statements ("seeks long-term capital
+#     appreciation", "targets large-cap equities", "60/40 allocation")
+#   - General descriptions of fund mechanics
+clause: either the document makes no specific forecasts of future returns or future-period performance (no concrete predicted numbers, target percentages, or projections of future periods — historical reporting and generic strategy/objective language like "seeks long-term growth" do NOT count as forward-looking), or any such forecasts are accompanied by a safe-harbor disclaimer noting that the statements are not guarantees and actual results may differ materially

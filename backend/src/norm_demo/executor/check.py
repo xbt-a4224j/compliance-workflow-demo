@@ -73,10 +73,25 @@ async def execute_check(node: GraphNode, doc: Document, router: Router) -> Check
     response = await router.route(CompletionRequest(system=system, user=user))
     answer = _parse_llm_json(response.text)
 
+    page_ref = _resolve_page(answer.evidence, doc)
+    passed = answer.passed
+    evidence = answer.evidence
+
+    # Hallucination guard: for FORBIDS_PHRASE, a passed=false verdict says
+    # "the forbidden phrase IS present in the doc" — and the LLM is supposed
+    # to quote it. If the quote can't be grounded back to any chunk, the LLM
+    # fabricated the quote (we've seen this when the doc contains the word
+    # in a disclaiming context, e.g. "not guaranteed by the FDIC"). Treat
+    # ungroundable violation claims as non-findings rather than trusting
+    # the LLM's hallucination.
+    if node.op == "FORBIDS_PHRASE" and passed is False and page_ref is None:
+        passed = True
+        evidence = None  # the hallucinated quote isn't worth surfacing
+
     return CheckResult(
         check_id=node.id,
-        passed=answer.passed,
-        evidence=answer.evidence,
-        page_ref=_resolve_page(answer.evidence, doc),
+        passed=passed,
+        evidence=evidence,
+        page_ref=page_ref,
         confidence=answer.confidence,
     )

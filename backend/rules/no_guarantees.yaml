@@ -1,0 +1,13 @@
+id: NOGUAR
+name: No guarantee language
+# ALL_OF over FORBIDS_PHRASE: every forbidden phrase must be ABSENT for the
+# rule to pass. If any one of these strings (or a near-match) appears in the
+# document, the rule fails.
+op: ALL_OF
+children:
+  - op: FORBIDS_PHRASE
+    phrase: guaranteed returns
+  - op: FORBIDS_PHRASE
+    phrase: guaranteed performance
+  - op: FORBIDS_PHRASE
+    phrase: risk-free investment

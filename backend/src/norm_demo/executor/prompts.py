@@ -32,16 +32,36 @@ def requires_clause(node: GraphNode, doc_text: str) -> tuple[str, str]:
 
 def forbids_phrase(node: GraphNode, doc_text: str) -> tuple[str, str]:
     system = (
-        "You are a strict compliance auditor. Decide whether a forbidden phrase "
-        "appears in a document. Catch near-match marketing-ese, not just exact "
-        "string matches. passed=true means the phrase is ABSENT (rule satisfied); "
-        "passed=false means the phrase or a near-equivalent IS present."
+        "You are a strict compliance auditor. Decide whether a forbidden ASSERTION "
+        "appears in a document. Catch near-match marketing-ese — but only when the "
+        "document is positively claiming the forbidden thing.\n\n"
+        "CRITICAL: distinguish ASSERTIONS from DISCLAIMERS, NEGATIONS, or HEDGED "
+        "PROJECTIONS.\n"
+        '  - "past performance is not a guarantee of future results" → DISCLAIMER, '
+        'does NOT count as a guarantee assertion.\n'
+        '  - "we expect 18-22% returns next year" → HEDGED projection ("expect" '
+        'carries uncertainty), does NOT count as a guarantee. (It may violate a '
+        "DIFFERENT rule — that's fine — but it is not a guarantee assertion.)\n"
+        '  - "this fund offers guaranteed returns of 8%" → POSITIVE ASSERTION, '
+        "does count.\n"
+        "  - \"risk-free investment\" / \"capital is guaranteed\" → POSITIVE ASSERTION.\n\n"
+        "Near-match means semantically equivalent (an absolute, unhedged promise of "
+        "the forbidden thing), not just topically related. Words like \"expect\", "
+        "\"anticipate\", \"target\", \"project\" introduce uncertainty and are NOT "
+        "near-matches for \"guaranteed\".\n\n"
+        "passed=true means no forbidden assertion is present (rule satisfied). "
+        "passed=false means the forbidden assertion (or its semantically equivalent "
+        "marketing-ese) is positively asserted somewhere in the document."
     )
     user = (
-        f'Forbidden phrase or its near-match equivalents: "{node.params["phrase"]}".\n\n'
-        f"Question: is this phrase, or a near-match marketing-ese version of it, "
-        f"present anywhere in the document below? Set passed=false if you find it "
-        f"(rule violated), true if it is absent (rule satisfied).\n\n"
+        f'Forbidden assertion or its semantically equivalent near-matches: '
+        f'"{node.params["phrase"]}".\n\n'
+        f"Question: does the document POSITIVELY ASSERT this phrase, or a "
+        f"semantically equivalent (absolute, unhedged) version of it? Disclaimers, "
+        f"negations, and hedged projections (with words like 'expect', 'anticipate', "
+        f"'target') do NOT count as the phrase being present.\n\n"
+        f"Set passed=false ONLY if you find an unhedged positive assertion. "
+        f"Set passed=true otherwise.\n\n"
         f"{_document_block(doc_text)}"
     )
     return system, user

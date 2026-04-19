@@ -1,0 +1,4 @@
+id: PERF
+name: Past performance must include disclaimer
+op: REQUIRES_CLAUSE
+clause: past performance is not a guarantee of future results

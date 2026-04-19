@@ -1,0 +1,11 @@
+id: FEES
+name: Fees and expenses disclosed
+# ANY_OF: either an explicit fee/ratio number satisfies the rule, OR a
+# concrete pointer to a fee table that the reader could look up. Both forms
+# count as "fees disclosed" — vague allusions ("low fees apply") don't.
+op: ANY_OF
+children:
+  - op: REQUIRES_CLAUSE
+    clause: management fee or annual expense ratio is stated as a specific number or percentage
+  - op: CITES
+    target: a fee table or fee schedule referenced by name and location (e.g. "see Fee Table on page X" or "see prospectus")
