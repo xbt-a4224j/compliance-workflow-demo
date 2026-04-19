@@ -40,13 +40,16 @@ class AnthropicAdapter:
             "anthropic-version": _ANTHROPIC_VERSION,
             "content-type": "application/json",
         }
-        payload = {
+        payload: dict[str, object] = {
             "model": self.model,
             "max_tokens": req.max_tokens,
             "system": req.system,
             "messages": [{"role": "user", "content": req.user}],
-            "temperature": req.temperature,
         }
+        # Opus 4.x deprecated `temperature` in favor of extended-thinking
+        # budget; sending it produces a 400. Older models still accept it.
+        if "opus-4" not in self.model:
+            payload["temperature"] = req.temperature
 
         async with httpx.AsyncClient(timeout=self.timeout_s, transport=self.transport) as client:
             try:
