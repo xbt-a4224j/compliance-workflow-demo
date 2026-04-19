@@ -5,10 +5,10 @@
     "@semantic-release/release-notes-generator",
     ["@semantic-release/changelog", { "changelogFile": "CHANGELOG.md" }],
     ["@semantic-release/exec", {
-      "prepareCmd": "sed -i.bak 's/^version = \".*\"/version = \"${nextRelease.version}\"/' backend/pyproject.toml && rm backend/pyproject.toml.bak"
+      "prepareCmd": "sed -i.bak 's/^version = \".*\"/version = \"${nextRelease.version}\"/' pyproject.toml && rm pyproject.toml.bak"
     }],
     ["@semantic-release/git", {
-      "assets": ["CHANGELOG.md", "backend/pyproject.toml"],
+      "assets": ["CHANGELOG.md", "pyproject.toml"],
       "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
     }],
     "@semantic-release/github"

@@ -10,7 +10,7 @@ inputs to the system, never outputs.**
 
 ## Violation matrix (the spec)
 
-Rows are docs; columns are rules from `backend/rules/`. Cells are the
+Rows are docs; columns are rules from `rules/`. Cells are the
 **expected** verdict when that rule runs against that doc. The matrix is the
 contract — if a real run diverges from it, either the rule, the doc, or the
 evaluator is broken.

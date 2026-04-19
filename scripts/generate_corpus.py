@@ -4,7 +4,7 @@ Source files use {{PAGE_BREAK}} markers; each section between markers
 becomes one PDF page so the chunker recovers true page numbers from
 pypdf's extraction.
 
-Run from the backend/ directory:
+Run from the project root:
     uv run python scripts/generate_corpus.py
 """
 from __future__ import annotations

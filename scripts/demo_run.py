@@ -23,9 +23,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Load .env from backend/ (or wherever this script is invoked from). Silent
-# no-op if the file doesn't exist — the script falls back to a mock adapter
-# in that case so it still runs.
+# Load .env from project root. Silent no-op if the file doesn't exist —
+# the script falls back to a mock adapter in that case so it still runs.
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from compliance_workflow_demo.dsl import compile_rule, load_rule  # noqa: E402

@@ -74,7 +74,7 @@ def _build_router() -> Router:
     if os.environ.get("OPENAI_API_KEY"):
         adapters.append(OpenAIAdapter())
     if not adapters:
-        raise SystemExit("set ANTHROPIC_API_KEY and/or OPENAI_API_KEY in backend/.env")
+        raise SystemExit("set ANTHROPIC_API_KEY and/or OPENAI_API_KEY in .env")
     print(f"[router] {' → '.join(a.provider for a in adapters)}")
     return Router(adapters=adapters)
 

@@ -34,7 +34,7 @@ for entry in "${CHECKS[@]}"; do
 done
 
 echo "[smoke] emitting test spans through OTLP pipeline"
-(cd backend && uv run python scripts/otel_smoke.py)
+uv run python scripts/otel_smoke.py
 
 echo "[smoke] verifying spans visible in jaeger (compliance-workflow-demo-smoke service)"
 deadline=$((SECONDS + 15))
