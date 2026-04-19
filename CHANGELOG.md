@@ -1,3 +1,11 @@
+# [1.4.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.3.0...v1.4.0) (2026-04-19)
+
+
+### Features
+
+* **dsl:** compile rules into content-addressed atomic-check DAG ([2445730](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/244573005af29747fdd993fb6a54e117dd2b4b35)), closes [#12](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/12)
+* **router:** add retry, circuit breaker, and failover orchestrator ([c1bc2ea](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/c1bc2ea490f620dc3eda1dce4ce29174d5dc30c3))
+
 # [1.3.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.2.0...v1.3.0) (2026-04-19)
 
 
