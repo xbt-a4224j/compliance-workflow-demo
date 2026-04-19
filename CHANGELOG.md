@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.5.0...v1.6.0) (2026-04-19)
+
+
+### Features
+
+* **executor:** orchestrator fans out leaves and aggregates with degraded semantics ([ce72159](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/ce72159a690278982e313ca0210743409ad3f47b)), closes [#6](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/6) [#17](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/17) [#17](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/17)
+
 # [1.5.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.4.0...v1.5.0) (2026-04-19)
 
 
