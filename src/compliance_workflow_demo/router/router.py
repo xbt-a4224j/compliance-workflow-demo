@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from opentelemetry import trace
 
 from compliance_workflow_demo.router.breaker import CircuitBreaker
+from compliance_workflow_demo.router.pricing import cost_usd as _cost_usd
 from compliance_workflow_demo.router.retry import RetryPolicy
 from compliance_workflow_demo.router.types import (
     CompletionRequest,
@@ -131,9 +132,14 @@ class Router:
                 span.set_attribute("llm.error", type(e).__name__)
                 raise
             latency_ms = int((time.monotonic() - t0) * 1000)
+            cost = _cost_usd(
+                adapter.provider, adapter.model, resp.input_tokens, resp.output_tokens
+            )
             span.set_attribute("llm.input_tokens", resp.input_tokens)
             span.set_attribute("llm.output_tokens", resp.output_tokens)
             span.set_attribute("llm.latency_ms", latency_ms)
+            if cost is not None:
+                span.set_attribute("llm.cost_usd", cost)
 
             if self.on_call is not None:
                 await self.on_call(RouterCallRecord(
@@ -145,5 +151,6 @@ class Router:
                     tokens_out=resp.output_tokens,
                     latency_ms=latency_ms,
                     attempt=attempt,
+                    cost_usd=cost,
                 ))
             return resp

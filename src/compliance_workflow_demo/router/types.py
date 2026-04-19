@@ -58,6 +58,7 @@ class RouterCallRecord:
     tokens_out: int
     latency_ms: int
     attempt: int
+    cost_usd: float | None = None
 
 
 # Optional callback Router invokes after each LLM attempt (success or failure).

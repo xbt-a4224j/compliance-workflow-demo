@@ -164,6 +164,7 @@ async def persist_run(
                 tokens_in=rc.tokens_in,
                 tokens_out=rc.tokens_out,
                 latency_ms=rc.latency_ms,
+                cost_usd=rc.cost_usd,
             )
         await update_run_status(
             conn,

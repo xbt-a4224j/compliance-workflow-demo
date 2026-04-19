@@ -101,8 +101,13 @@ async def db_overview(request: Request) -> DbOverview:
     try:
         runs = await _rows(
             conn,
-            "SELECT id, rule_id, doc_id, status, started_at, finished_at "
-            "FROM runs ORDER BY started_at DESC LIMIT 20",
+            "SELECT r.id, r.rule_id, r.doc_id, r.status, "
+            "       r.started_at, r.finished_at, "
+            "       ROUND(COALESCE(SUM(rc.cost_usd), 0)::numeric, 6)::float "
+            "         AS cost_usd "
+            "FROM runs r LEFT JOIN router_calls rc ON rc.run_id = r.id "
+            "GROUP BY r.id "
+            "ORDER BY r.started_at DESC LIMIT 20",
         )
         findings = await _rows(
             conn,
