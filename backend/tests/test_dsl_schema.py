@@ -23,9 +23,9 @@ def test_parse_flat_rule():
             op: ALL_OF
             children:
               - op: REQUIRES_CLAUSE
-                phrase: "past performance"
+                clause: "past performance is disclosed"
               - op: REQUIRES_CLAUSE
-                phrase: "no guarantee of future results"
+                clause: "no guarantee of future results"
             """
         )
     )
@@ -34,7 +34,7 @@ def test_parse_flat_rule():
     assert len(rule.root.children) == 2
     first = rule.root.children[0]
     assert isinstance(first, RequiresClauseNode)
-    assert first.phrase == "past performance"
+    assert first.clause == "past performance is disclosed"
 
 
 def test_parse_nested_rule_with_all_ops():
@@ -48,7 +48,7 @@ def test_parse_nested_rule_with_all_ops():
               - op: ANY_OF
                 children:
                   - op: REQUIRES_CLAUSE
-                    phrase: a
+                    clause: a
                   - op: FORBIDS_PHRASE
                     phrase: b
               - op: CITES
@@ -73,12 +73,12 @@ def test_parse_explicit_root_form():
             name: x
             root:
               op: REQUIRES_CLAUSE
-              phrase: ok
+              clause: ok
             """
         )
     )
     assert isinstance(rule.root, RequiresClauseNode)
-    assert rule.root.phrase == "ok"
+    assert rule.root.clause == "ok"
 
 
 def test_reject_unknown_op():
@@ -116,7 +116,7 @@ def test_reject_extra_field_on_node():
                 id: R1
                 name: x
                 op: REQUIRES_CLAUSE
-                phrase: hello
+                clause: hello
                 bogus: true
                 """
             )

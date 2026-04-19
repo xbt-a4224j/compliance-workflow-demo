@@ -12,7 +12,7 @@ class _DslModel(BaseModel):
 
 class RequiresClauseNode(_DslModel):
     op: Literal["REQUIRES_CLAUSE"]
-    phrase: str
+    clause: str
 
 
 class ForbidsPhraseNode(_DslModel):
