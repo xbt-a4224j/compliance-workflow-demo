@@ -60,6 +60,7 @@ class Orchestrator:
         doc: Document,
         *,
         run_id: str | None = None,
+        primary: str | None = None,
     ) -> RunResult:
         # Caller can pre-generate the run_id so the value returned by an API
         # endpoint matches the run_id stamped on every emitted event. Default
@@ -76,6 +77,10 @@ class Orchestrator:
             span.set_attribute("dag.leaves", len(leaves))
             span.set_attribute("dag.aggregators", len(aggregators))
             span.set_attribute("dag.rules", ",".join(graph.roots.keys()))
+            # Makes traces filterable in Jaeger Search by the primary provider
+            # the caller requested — feeds both ab-compare.sh and ab-bench.py.
+            if primary is not None:
+                span.set_attribute("run.primary", primary)
 
             return await self._run(graph, doc, run_id, leaves, span)
 

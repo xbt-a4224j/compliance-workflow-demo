@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
 
-from compliance_workflow_demo.api.schemas import DocPage, DocSummary, DocText, RuleSummary
+from compliance_workflow_demo.api.schemas import (
+    DbOverview,
+    DocPage,
+    DocSummary,
+    DocText,
+    RuleDetail,
+    RuleSummary,
+)
+from compliance_workflow_demo.db.connection import connect
+from compliance_workflow_demo.dsl import compile_rules
 
 router = APIRouter()
 
@@ -14,6 +23,25 @@ async def list_rules(request: Request) -> list[RuleSummary]:
         RuleSummary(id=rule.id, name=rule.name, op=rule.root.op)
         for rule in rules.values()
     ]
+
+
+@router.get("/rules/{rule_id}", response_model=RuleDetail)
+async def get_rule(rule_id: str, request: Request) -> RuleDetail:
+    """Rule authored-YAML + its compiled atomic-check DAG. Feeds the Rules
+    view, which renders YAML ↔ DAG side-by-side."""
+    rules = request.app.state.rules
+    sources = request.app.state.rule_sources
+    rule = rules.get(rule_id)
+    if rule is None:
+        raise HTTPException(status_code=404, detail=f"unknown rule_id: {rule_id!r}")
+    graph = compile_rules([rule])
+    return RuleDetail(
+        id=rule.id,
+        name=rule.name,
+        op=rule.root.op,
+        yaml_source=sources[rule_id],
+        dag=graph,
+    )
 
 
 @router.get("/docs", response_model=list[DocSummary])
@@ -49,6 +77,48 @@ async def get_doc_text(doc_id: str, request: Request) -> DocText:
         title=_extract_title(doc_id, doc),
         sha256=doc.id,
         pages=pages,
+    )
+
+
+@router.get("/admin/db/overview", response_model=DbOverview)
+async def db_overview(request: Request) -> DbOverview:
+    """Recent rows from runs / findings / router_calls for the Admin UI tab.
+    Read-only. Limited to 20 rows per table to keep the payload small."""
+    db_url = request.app.state.db_url
+    if db_url is None:
+        return DbOverview(connected=False, runs=[], findings=[], router_calls=[])
+
+    async def _rows(conn, sql: str) -> list[dict]:
+        async with conn.cursor() as cur:
+            await cur.execute(sql)
+            cols = [c.name for c in cur.description]
+            return [
+                {c: (v.isoformat() if hasattr(v, "isoformat") else v) for c, v in zip(cols, row)}
+                for row in await cur.fetchall()
+            ]
+
+    conn = await connect(db_url)
+    try:
+        runs = await _rows(
+            conn,
+            "SELECT id, rule_id, doc_id, status, started_at, finished_at "
+            "FROM runs ORDER BY started_at DESC LIMIT 20",
+        )
+        findings = await _rows(
+            conn,
+            "SELECT run_id, check_id, doc_id, passed, evidence, page_ref, confidence, created_at "
+            "FROM findings ORDER BY created_at DESC LIMIT 20",
+        )
+        router_calls = await _rows(
+            conn,
+            "SELECT run_id, check_id, provider, tokens_in, tokens_out, cost_usd, latency_ms "
+            "FROM router_calls ORDER BY run_id DESC LIMIT 20",
+        )
+    finally:
+        await conn.close()
+
+    return DbOverview(
+        connected=True, runs=runs, findings=findings, router_calls=router_calls
     )
 
 

@@ -39,5 +39,10 @@ infra/data/
 # Local screenshots (scratch — not part of the project)
 img*.png
 
-# Private prep / interview notes (not part of the project artifact)
+# ab-bench produces a new PNG each run — ignore the timestamped ones, keep
+# anything hand-curated (screenshots, manually renamed sample charts).
+scripts/outputs/ab_2*.png
+
+# Private local notes — not part of the project
 CLAUDE.md
+DEMO.md

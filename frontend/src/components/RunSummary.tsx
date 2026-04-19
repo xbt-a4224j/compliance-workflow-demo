@@ -5,6 +5,7 @@ interface Props {
   rules: RuleSummary[];
   result: RunResult | null;
   connectionState: string;
+  traceId: string | null;
 }
 
 const STATUS_COLOR: Record<RunStatus, string> = {
@@ -19,7 +20,7 @@ const STATUS_LABEL: Record<RunStatus, string> = {
   degraded: "Degraded",
 };
 
-export function RunSummary({ graph, rules, result, connectionState }: Props) {
+export function RunSummary({ graph, rules, result, connectionState, traceId }: Props) {
   const ruleIds = Object.keys(graph.roots);
   const ruleNames = Object.fromEntries(rules.map((r) => [r.id, r.name]));
   return (
@@ -31,6 +32,21 @@ export function RunSummary({ graph, rules, result, connectionState }: Props) {
               {STATUS_LABEL[result.status]}
             </div>
             <Row label="Run ID" value={<code className="text-sm">{result.run_id.slice(0, 8)}…</code>} />
+            {traceId && (
+              <Row
+                label="Trace"
+                value={
+                  <a
+                    href={`http://localhost:16686/trace/${traceId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-sky-600 hover:text-sky-800 underline"
+                  >
+                    Open in Jaeger →
+                  </a>
+                }
+              />
+            )}
           </div>
         ) : (
           <div className="text-sm text-slate-500 italic">

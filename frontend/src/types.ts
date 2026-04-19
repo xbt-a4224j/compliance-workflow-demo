@@ -23,6 +23,14 @@ export interface RuleSummary {
   op: NodeOp;
 }
 
+export interface RuleDetail {
+  id: string;
+  name: string;
+  op: NodeOp;
+  yaml_source: string;
+  dag: ExecutionGraph;
+}
+
 export interface DocSummary {
   id: string;        // filename stem (e.g. "synth_fund_01")
   title: string;     // human-friendly name from the doc's first line
@@ -40,6 +48,13 @@ export interface DocText {
   title: string;
   sha256: string;
   pages: DocPage[];
+}
+
+export interface DbOverview {
+  connected: boolean;
+  runs: Record<string, unknown>[];
+  findings: Record<string, unknown>[];
+  router_calls: Record<string, unknown>[];
 }
 
 export interface CheckResult {
@@ -73,6 +88,7 @@ export interface RunResult {
 export interface CreateRunResponse {
   run_id: string;
   dag: ExecutionGraph;
+  trace_id: string | null;
 }
 
 export interface GetRunResponse {

@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
 
 import { api } from "./api";
+import { AdminView } from "./components/AdminView";
 import { DagView } from "./components/DagView";
 import { DocumentPane } from "./components/DocumentPane";
+import { RuleEditor } from "./components/RuleEditor";
 import { RunSelector } from "./components/RunSelector";
 import { RunSummary } from "./components/RunSummary";
 import { useRunStream } from "./hooks/useRunStream";
 import type { CreateRunResponse, DocSummary, RuleSummary } from "./types";
 
+type View = "run" | "rules" | "admin";
+
 export default function App() {
+  const [view, setView] = useState<View>("run");
   const [rules, setRules] = useState<RuleSummary[]>([]);
   const [docs, setDocs] = useState<DocSummary[]>([]);
   const [docId, setDocId] = useState("");
@@ -49,15 +54,22 @@ export default function App() {
         <span className="text-sm text-slate-500">
           Compliance rule checker · live DAG visualization
         </span>
+        <nav className="ml-auto flex gap-1">
+          <ViewTab active={view === "run"} onClick={() => setView("run")}>Run</ViewTab>
+          <ViewTab active={view === "rules"} onClick={() => setView("rules")}>Rules</ViewTab>
+          <ViewTab active={view === "admin"} onClick={() => setView("admin")}>Admin</ViewTab>
+        </nav>
       </header>
 
-      <RunSelector
-        docs={docs}
-        docId={docId}
-        busy={busy || (!!run && stream.connectionState !== "closed" && !stream.result)}
-        onDocChange={setDocId}
-        onRun={handleRun}
-      />
+      {view === "run" && (
+        <RunSelector
+          docs={docs}
+          docId={docId}
+          busy={busy || (!!run && stream.connectionState !== "closed" && !stream.result)}
+          onDocChange={setDocId}
+          onRun={handleRun}
+        />
+      )}
 
       {error && (
         <div className="px-6 py-3 bg-rose-50 text-rose-800 border-b border-rose-200 text-sm font-mono">
@@ -65,37 +77,67 @@ export default function App() {
         </div>
       )}
 
-      <div className="flex-1 flex min-h-0">
-        <main className="flex-1 min-w-0 flex flex-col bg-slate-50">
-          {run ? (
-            <>
-              <div className="flex-1 min-h-0">
-                <DagView
-                  graph={run.dag}
-                  rules={rules}
-                  statuses={stream.statuses}
-                  findings={stream.findings}
-                  result={stream.result}
-                />
-              </div>
-              <div className="h-72 min-h-[18rem] max-h-[40vh] resize-y overflow-hidden">
-                <DocumentPane docId={docId} findings={stream.findings} />
-              </div>
-            </>
-          ) : (
-            <Placeholder />
+      {view === "run" ? (
+        <div className="flex-1 flex min-h-0">
+          <main className="flex-1 min-w-0 flex flex-col bg-slate-50">
+            {run ? (
+              <>
+                <div className="flex-1 min-h-0">
+                  <DagView
+                    graph={run.dag}
+                    rules={rules}
+                    statuses={stream.statuses}
+                    findings={stream.findings}
+                    result={stream.result}
+                  />
+                </div>
+                <div className="h-72 min-h-[18rem] max-h-[40vh] resize-y overflow-hidden">
+                  <DocumentPane docId={docId} findings={stream.findings} />
+                </div>
+              </>
+            ) : (
+              <Placeholder />
+            )}
+          </main>
+          {run && (
+            <RunSummary
+              graph={run.dag}
+              rules={rules}
+              result={stream.result}
+              connectionState={stream.connectionState}
+              traceId={run.trace_id}
+            />
           )}
-        </main>
-        {run && (
-          <RunSummary
-            graph={run.dag}
-            rules={rules}
-            result={stream.result}
-            connectionState={stream.connectionState}
-          />
-        )}
-      </div>
+        </div>
+      ) : view === "rules" ? (
+        <RuleEditor rules={rules} />
+      ) : (
+        <AdminView />
+      )}
     </div>
+  );
+}
+
+function ViewTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+        active
+          ? "bg-slate-900 text-white"
+          : "text-slate-600 hover:bg-slate-100"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

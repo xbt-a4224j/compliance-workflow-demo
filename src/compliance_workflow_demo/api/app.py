@@ -10,9 +10,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
+import logging
+
 from compliance_workflow_demo.api.resources import router as resources_router
 from compliance_workflow_demo.api.runs import router as runs_router
 from compliance_workflow_demo.api.state import RunRegistry
+from compliance_workflow_demo.db.connection import connect, database_url
+from compliance_workflow_demo.db.migrate import apply_migrations
 from compliance_workflow_demo.dsl import Rule, load_rule
 from compliance_workflow_demo.ingest import Document, parse_pdf_path
 from compliance_workflow_demo.obs.tracing import configure_tracing, force_flush
@@ -30,18 +34,24 @@ DEFAULT_RULES_DIR = BACKEND_ROOT / "rules"
 DEFAULT_CORPUS_DIR = BACKEND_ROOT / "corpus"
 
 
-def _load_rules(directory: Path) -> dict[str, Rule]:
-    return {
-        rule.id: rule
-        for rule in (load_rule(p.read_text()) for p in sorted(directory.glob("*.yaml")))
-    }
+def _load_rules(directory: Path) -> tuple[dict[str, Rule], dict[str, str]]:
+    """Return (rules_by_id, yaml_sources_by_id).  The sources let the Rules
+    view in the UI show the authored YAML alongside the compiled DAG."""
+    rules: dict[str, Rule] = {}
+    sources: dict[str, str] = {}
+    for path in sorted(directory.glob("*.yaml")):
+        src = path.read_text()
+        rule = load_rule(src)
+        rules[rule.id] = rule
+        sources[rule.id] = src
+    return rules, sources
 
 
 def _load_docs(directory: Path) -> dict[str, Document]:
     return {p.stem: parse_pdf_path(p) for p in sorted(directory.glob("*.pdf"))}
 
 
-def _build_router() -> Router:
+def _build_adapters() -> list[ProviderAdapter]:
     """Live providers if API keys are set, else MockAdapter so the API is
     runnable offline (e.g. for frontend dev without burning API credit)."""
     adapters: list[ProviderAdapter] = []
@@ -51,7 +61,7 @@ def _build_router() -> Router:
         adapters.append(OpenAIAdapter())
     if not adapters:
         adapters.append(MockAdapter())
-    return Router(adapters=adapters)
+    return adapters
 
 
 @asynccontextmanager
@@ -60,10 +70,29 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     rules_dir = Path(os.environ.get("RULES_DIR", DEFAULT_RULES_DIR))
     corpus_dir = Path(os.environ.get("CORPUS_DIR", DEFAULT_CORPUS_DIR))
 
-    app.state.rules = _load_rules(rules_dir)
+    adapters = _build_adapters()
+    rules, rule_sources = _load_rules(rules_dir)
+    app.state.rules = rules
+    app.state.rule_sources = rule_sources
     app.state.docs = _load_docs(corpus_dir)
-    app.state.router = _build_router()
+    app.state.adapters = adapters
+    app.state.router = Router(adapters=list(adapters))
     app.state.registry = RunRegistry()
+
+    # Best-effort DB setup: apply migrations, remember the URL so runners can
+    # open per-run connections. If Postgres isn't reachable (demo running
+    # without `docker compose up`), skip persistence entirely — the app still
+    # works, DataGrip just has nothing to show.
+    app.state.db_url = None
+    try:
+        conn = await connect()
+        await apply_migrations(conn)
+        await conn.close()
+        app.state.db_url = database_url()
+    except Exception as e:
+        logging.getLogger(__name__).warning(
+            "postgres unavailable — runs won't be persisted (%s)", e
+        )
 
     yield
 
