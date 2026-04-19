@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, HTTPException, Request
 
 from compliance_workflow_demo.api.schemas import (
@@ -140,6 +142,40 @@ async def get_logs(
     buf = request.app.state.log_buffer
     entries = buf.snapshot(min_level=min_level, limit=limit)
     return LogsResponse(capacity=buf._buf.maxlen or 0, entries=entries)
+
+
+@router.delete("/admin/data")
+async def reset_data(request: Request) -> dict[str, int]:
+    """Wipe runs / findings / router_calls so a demo can show a fresh
+    persistence story without docker compose down. CASCADE on findings means
+    we only need to truncate runs to clear findings; router_calls is
+    truncated separately because its FK is also ON DELETE CASCADE from runs.
+    Returns counts removed for the UI to confirm."""
+    db_url = request.app.state.db_url
+    if db_url is None:
+        raise HTTPException(status_code=503, detail="postgres not connected")
+
+    conn = await connect(db_url)
+    try:
+        async with conn.cursor() as cur:
+            await cur.execute("SELECT COUNT(*) FROM runs")
+            (n_runs,) = await cur.fetchone()
+            await cur.execute("SELECT COUNT(*) FROM findings")
+            (n_findings,) = await cur.fetchone()
+            await cur.execute("SELECT COUNT(*) FROM router_calls")
+            (n_router_calls,) = await cur.fetchone()
+            # TRUNCATE … CASCADE handles the FKs in one shot and resets any
+            # sequences (router_calls.id) so demo IDs stay small.
+            await cur.execute("TRUNCATE runs, findings, router_calls RESTART IDENTITY CASCADE")
+        await conn.commit()
+    finally:
+        await conn.close()
+
+    logging.getLogger(__name__).warning(
+        "admin reset: cleared %d runs, %d findings, %d router_calls",
+        n_runs, n_findings, n_router_calls,
+    )
+    return {"runs": n_runs, "findings": n_findings, "router_calls": n_router_calls}
 
 
 def _extract_title(stem: str, doc) -> str:

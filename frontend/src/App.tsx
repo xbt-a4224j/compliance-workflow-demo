@@ -27,6 +27,7 @@ export default function App() {
   const [rules, setRules] = useState<RuleSummary[]>([]);
   const [docs, setDocs] = useState<DocSummary[]>([]);
   const [docId, setDocId] = useState("");
+  const [skipCache, setSkipCache] = useState(false);
   const [run, setRun] = useState<CreateRunResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -74,7 +75,7 @@ export default function App() {
     setError(null);
     try {
       // Omitting rule_ids → backend evaluates every loaded rule in one DAG.
-      const result = await api.createRun(docId);
+      const result = await api.createRun(docId, { skip_cache: skipCache });
       setRun(result);
     } catch (e) {
       setError(String(e));
@@ -120,8 +121,10 @@ export default function App() {
         <RunSelector
           docs={docs}
           docId={docId}
+          skipCache={skipCache}
           busy={busy || (!!run && stream.connectionState !== "closed" && !stream.result)}
           onDocChange={setDocId}
+          onSkipCacheChange={setSkipCache}
           onRun={handleRun}
         />
       )}

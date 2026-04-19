@@ -57,13 +57,27 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return (await r.json()) as T;
 }
 
+async function deleteJson<T>(path: string): Promise<T> {
+  const r = await fetch(`${BASE}${path}`, { method: "DELETE", headers: authHeaders() });
+  handle401(r.status);
+  if (!r.ok) {
+    const detail = await r.text();
+    throw new Error(`${path}: ${r.status} ${r.statusText}\n${detail}`);
+  }
+  return (await r.json()) as T;
+}
+
 export const api = {
   listRules: () => getJson<RuleSummary[]>("/rules"),
   getRule: (rule_id: string) => getJson<RuleDetail>(`/rules/${rule_id}`),
   listDocs: () => getJson<DocSummary[]>("/docs"),
   getDocText: (doc_id: string) => getJson<DocText>(`/docs/${doc_id}/text`),
-  createRun: (doc_id: string, rule_ids?: string[]) =>
-    postJson<CreateRunResponse>("/runs", { doc_id, rule_ids: rule_ids ?? null }),
+  createRun: (doc_id: string, opts: { rule_ids?: string[]; skip_cache?: boolean } = {}) =>
+    postJson<CreateRunResponse>("/runs", {
+      doc_id,
+      rule_ids: opts.rule_ids ?? null,
+      skip_cache: opts.skip_cache ?? false,
+    }),
   getRun: (run_id: string) => getJson<GetRunResponse>(`/runs/${run_id}`),
   streamUrl: (run_id: string) => {
     // EventSource can't send custom headers, so the token rides as a query
@@ -76,4 +90,6 @@ export const api = {
   dbOverview: () => getJson<DbOverview>("/admin/db/overview"),
   logs: (minLevel: LogLevel = "INFO", limit = 200) =>
     getJson<LogsResponse>(`/admin/logs?min_level=${minLevel}&limit=${limit}`),
+  resetData: () =>
+    deleteJson<{ runs: number; findings: number; router_calls: number }>("/admin/data"),
 };

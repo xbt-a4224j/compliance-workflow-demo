@@ -81,8 +81,12 @@ async def create_run(req: CreateRunRequest, request: Request) -> CreateRunRespon
     llm_router = Router(adapters=ordered, on_call=record_call)
 
     cache: NoCache | PostgresFindingsCache = (
-        PostgresFindingsCache(db_url=db_url) if db_url is not None else NoCache()
+        PostgresFindingsCache(db_url=db_url)
+        if db_url is not None and not req.skip_cache
+        else NoCache()
     )
+    if req.skip_cache:
+        log.info("run %s requested skip_cache — bypassing findings cache", run_id)
 
     async def runner() -> RunResult:
         try:

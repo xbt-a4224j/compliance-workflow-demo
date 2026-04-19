@@ -4,11 +4,15 @@ interface Props {
   docs: DocSummary[];
   docId: string;
   busy: boolean;
+  skipCache: boolean;
   onDocChange: (id: string) => void;
+  onSkipCacheChange: (v: boolean) => void;
   onRun: () => void;
 }
 
-export function RunSelector({ docs, docId, busy, onDocChange, onRun }: Props) {
+export function RunSelector({
+  docs, docId, busy, skipCache, onDocChange, onSkipCacheChange, onRun,
+}: Props) {
   const canRun = !!docId && !busy;
   return (
     <div className="flex flex-wrap items-end gap-4 px-6 py-4 border-b border-slate-200 bg-white">
@@ -30,6 +34,19 @@ export function RunSelector({ docs, docId, busy, onDocChange, onRun }: Props) {
           ))}
         </select>
       </Field>
+
+      <label
+        className="flex items-center gap-2 pb-2 text-sm text-slate-600 cursor-pointer select-none"
+        title="Bypass the findings cache so every leaf re-calls the LLM (slower; shows real cost)"
+      >
+        <input
+          type="checkbox"
+          checked={skipCache}
+          onChange={(e) => onSkipCacheChange(e.target.checked)}
+          className="h-4 w-4 accent-sky-600"
+        />
+        Skip cache
+      </label>
 
       <button
         onClick={onRun}

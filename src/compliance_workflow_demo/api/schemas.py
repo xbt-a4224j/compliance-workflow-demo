@@ -20,6 +20,10 @@ class CreateRunRequest(BaseModel):
     # Override which adapter is tried first so callers can force a run through
     # a specific provider. Enables side-by-side provider comparison in Jaeger.
     primary: Literal["anthropic", "openai"] | None = None
+    # Bypass the findings cache for this run — every leaf re-calls the LLM.
+    # Useful for demos: makes the next run actually expensive + slow so the
+    # cache hit on the run after that is visible by contrast.
+    skip_cache: bool = False
 
 
 class CreateRunResponse(BaseModel):

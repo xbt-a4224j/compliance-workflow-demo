@@ -11,11 +11,31 @@ export function AdminView() {
   const [data, setData] = useState<DbOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const load = () => {
     setLoading(true);
     setError(null);
     api.dbOverview().then(setData).catch((e) => setError(String(e))).finally(() => setLoading(false));
+  };
+
+  const reset = async () => {
+    if (!confirm(
+      "Wipe runs, findings, and router_calls?\n\n" +
+      "Useful for resetting the demo so the next run actually calls the LLM " +
+      "(and shows real cost). Cannot be undone."
+    )) return;
+    setResetting(true);
+    setError(null);
+    try {
+      const counts = await api.resetData();
+      console.log("[admin] reset cleared", counts);
+      load();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setResetting(false);
+    }
   };
 
   useEffect(load, []);
@@ -25,9 +45,17 @@ export function AdminView() {
       <div className="px-6 py-3 border-b border-slate-200 bg-white flex items-center gap-4">
         <span className="text-sm text-slate-500">Postgres — last 20 rows per table</span>
         <button
+          onClick={reset}
+          disabled={resetting || !data?.connected}
+          title="Wipe runs/findings/router_calls — next run will hit the LLM for real"
+          className="ml-auto px-3 py-1 text-sm rounded border border-rose-300 bg-white text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+        >
+          {resetting ? "Resetting…" : "Reset demo data"}
+        </button>
+        <button
           onClick={load}
           disabled={loading}
-          className="ml-auto px-3 py-1 text-sm rounded border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50"
+          className="px-3 py-1 text-sm rounded border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50"
         >
           {loading ? "…" : "Refresh"}
         </button>
