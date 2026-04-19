@@ -8,8 +8,13 @@ from compliance_workflow_demo.executor.run import RunResult
 
 class CreateRunRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    rule_id: str
     doc_id: str = Field(description="The doc stem (e.g. 'synth_fund_01'), not the sha256")
+    # Optional rule subset; omit (or empty) to evaluate every loaded rule.
+    # Compiling multiple rules together produces a single DAG; the orchestrator
+    # then reports per-rule verdicts. Shared sub-expressions across rules
+    # collapse to one node via the content-hash id, so a leaf used by N rules
+    # only runs once.
+    rule_ids: list[str] | None = None
 
 
 class CreateRunResponse(BaseModel):
@@ -36,5 +41,19 @@ class RuleSummary(BaseModel):
 
 class DocSummary(BaseModel):
     id: str           # the doc stem (filename without extension)
+    title: str        # human-friendly name extracted from the doc's first line
     sha256: str       # content-addressed id
     pages: int
+
+
+class DocPage(BaseModel):
+    page: int
+    text: str
+
+
+class DocText(BaseModel):
+    """Per-page text for a document, used by the UI's evidence-highlight pane."""
+    id: str
+    title: str
+    sha256: str
+    pages: list[DocPage]

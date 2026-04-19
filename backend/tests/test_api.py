@@ -82,7 +82,7 @@ def test_list_docs(client: TestClient) -> None:
 # --- POST /runs ------------------------------------------------------------
 
 def test_create_run_returns_run_id_and_dag(client: TestClient) -> None:
-    r = client.post("/runs", json={"rule_id": "PERF", "doc_id": "synth_fund_01"})
+    r = client.post("/runs", json={"rule_ids": ["PERF"], "doc_id": "synth_fund_01"})
     assert r.status_code == 200
     body = r.json()
     assert "run_id" in body
@@ -91,21 +91,31 @@ def test_create_run_returns_run_id_and_dag(client: TestClient) -> None:
     assert body["dag"]["roots"] == {"PERF": next(iter(body["dag"]["roots"].values()))}
 
 
+def test_create_run_omitting_rule_ids_runs_every_rule(client: TestClient) -> None:
+    """No rule_ids → evaluate the entire rule set in one DAG."""
+    r = client.post("/runs", json={"doc_id": "synth_fund_04"})
+    assert r.status_code == 200
+    body = r.json()
+    assert set(body["dag"]["roots"].keys()) == {"PERF", "NOGUAR", "BAL", "FEES", "FWD"}
+
+
 def test_create_run_unknown_rule(client: TestClient) -> None:
-    r = client.post("/runs", json={"rule_id": "DOES_NOT_EXIST", "doc_id": "synth_fund_01"})
+    r = client.post(
+        "/runs", json={"rule_ids": ["DOES_NOT_EXIST"], "doc_id": "synth_fund_01"}
+    )
     assert r.status_code == 404
     assert "DOES_NOT_EXIST" in r.json()["detail"]
 
 
 def test_create_run_unknown_doc(client: TestClient) -> None:
-    r = client.post("/runs", json={"rule_id": "PERF", "doc_id": "no_such_doc"})
+    r = client.post("/runs", json={"rule_ids": ["PERF"], "doc_id": "no_such_doc"})
     assert r.status_code == 404
 
 
 def test_create_run_rejects_extra_fields(client: TestClient) -> None:
     r = client.post(
         "/runs",
-        json={"rule_id": "PERF", "doc_id": "synth_fund_01", "bogus": True},
+        json={"rule_ids": ["PERF"], "doc_id": "synth_fund_01", "bogus": True},
     )
     assert r.status_code == 422  # pydantic extra="forbid" → unprocessable
 
@@ -118,7 +128,7 @@ def test_get_run_404_for_unknown_id(client: TestClient) -> None:
 
 
 def test_get_run_returns_state_after_completion(client: TestClient) -> None:
-    create = client.post("/runs", json={"rule_id": "PERF", "doc_id": "synth_fund_01"})
+    create = client.post("/runs", json={"rule_ids": ["PERF"], "doc_id": "synth_fund_01"})
     run_id = create.json()["run_id"]
 
     # Poll until complete (in-process orchestrator runs immediately under TestClient).
@@ -129,7 +139,7 @@ def test_get_run_returns_state_after_completion(client: TestClient) -> None:
             break
     body = r.json()
     assert body["run_id"] == run_id
-    assert body["rule_id"] == "PERF"
+    assert body["rule_id"] == "PERF"  # rule_label is comma-joined; single rule = its id
     assert body["doc_id"] == "synth_fund_01"
     assert body["result"]["status"] == "passed"
     assert body["result"]["per_rule"] == {"PERF": True}
@@ -152,7 +162,7 @@ async def test_sse_stream_emits_events_in_order(monkeypatch: pytest.MonkeyPatch)
         app.state.router = _passing_router()
 
         create = await ac.post(
-            "/runs", json={"rule_id": "NOGUAR", "doc_id": "synth_fund_01"}
+            "/runs", json={"rule_ids": ["NOGUAR"], "doc_id": "synth_fund_01"}
         )
         run_id = create.json()["run_id"]
 
@@ -205,7 +215,7 @@ async def test_end_to_end_run_flow(monkeypatch: pytest.MonkeyPatch) -> None:
             app.state.router = _passing_router()
 
             create = await ac.post(
-                "/runs", json={"rule_id": "FEES", "doc_id": "synth_fund_05"}
+                "/runs", json={"rule_ids": ["FEES"], "doc_id": "synth_fund_05"}
             )
             assert create.status_code == 200
             run_id = create.json()["run_id"]

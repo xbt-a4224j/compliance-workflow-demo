@@ -13,7 +13,7 @@ from compliance_workflow_demo.api.schemas import (
     GetRunResponse,
 )
 from compliance_workflow_demo.api.state import RunState
-from compliance_workflow_demo.dsl import compile_rule
+from compliance_workflow_demo.dsl import compile_rules
 from compliance_workflow_demo.executor import Orchestrator
 from compliance_workflow_demo.executor.run import OrchestratorEvent, RunResult
 
@@ -29,16 +29,22 @@ async def create_run(req: CreateRunRequest, request: Request) -> CreateRunRespon
     registry = request.app.state.registry
     llm_router = request.app.state.router
 
-    rule = rules.get(req.rule_id)
-    if rule is None:
-        raise HTTPException(status_code=404, detail=f"unknown rule_id: {req.rule_id!r}")
     doc = docs.get(req.doc_id)
     if doc is None:
         raise HTTPException(status_code=404, detail=f"unknown doc_id: {req.doc_id!r}")
 
-    graph = compile_rule(rule)
+    if req.rule_ids:
+        unknown = [rid for rid in req.rule_ids if rid not in rules]
+        if unknown:
+            raise HTTPException(status_code=404, detail=f"unknown rule_ids: {unknown}")
+        selected_rules = [rules[rid] for rid in req.rule_ids]
+    else:
+        selected_rules = list(rules.values())
+
+    graph = compile_rules(selected_rules)
     run_id = str(uuid.uuid4())
-    state = RunState(run_id=run_id, rule_id=rule.id, doc_id=req.doc_id, dag=graph)
+    rule_label = ",".join(r.id for r in selected_rules)
+    state = RunState(run_id=run_id, rule_id=rule_label, doc_id=req.doc_id, dag=graph)
 
     async def on_event(event: OrchestratorEvent) -> None:
         await state.events.put(event)
