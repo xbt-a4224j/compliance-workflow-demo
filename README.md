@@ -2,7 +2,7 @@
 
 Compliance DSL + outage-resilient LLM router. A YAML rule compiles to a DAG of atomic LLM checks; every call goes through a router with per-provider circuit breakers, retries, and Anthropic → OpenAI failover. Traced end-to-end in OpenTelemetry.
 
-Built for a (redacted) interview.
+Built for a [Client] interview.
 
 ## Layout
 

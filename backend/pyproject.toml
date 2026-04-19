@@ -1,7 +1,7 @@
 [project]
 name = "compliance-workflow-demo"
 version = "1.9.0"
-description = "Compliance DSL + outage-resilient LLM router demo ((redacted) interview)"
+description = "Compliance DSL + outage-resilient LLM router demo ([Client] interview)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "fastapi>=0.115",
