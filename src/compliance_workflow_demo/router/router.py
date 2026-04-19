@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from opentelemetry import trace
+
 from compliance_workflow_demo.router.breaker import CircuitBreaker
 from compliance_workflow_demo.router.retry import RetryPolicy
 from compliance_workflow_demo.router.types import (
@@ -12,6 +14,8 @@ from compliance_workflow_demo.router.types import (
     ProviderUnavailable,
     TransientError,
 )
+
+_tracer = trace.get_tracer(__name__)
 
 
 @dataclass
@@ -66,9 +70,13 @@ class Router:
                 continue
 
             try:
+                attempt_num = 0
                 async for attempt in self.retry.attempts():
                     with attempt:
-                        resp = await adapter.complete(req)
+                        attempt_num += 1
+                        resp = await self._call_with_span(
+                            adapter, req, attempt_num
+                        )
                 await breaker.record_success()
                 return resp
             except PermanentError:
@@ -85,3 +93,25 @@ class Router:
         raise ProviderUnavailable(
             f"all {len(self.adapters)} providers exhausted"
         ) from last_transient
+
+    async def _call_with_span(
+        self,
+        adapter: ProviderAdapter,
+        req: CompletionRequest,
+        attempt: int,
+    ) -> CompletionResponse:
+        with _tracer.start_as_current_span(f"llm.{adapter.provider}") as span:
+            span.set_attribute("llm.provider", adapter.provider)
+            span.set_attribute("llm.model", adapter.model)
+            span.set_attribute("llm.attempt", attempt)
+            span.set_attribute("llm.max_tokens", req.max_tokens)
+            span.set_attribute("llm.temperature", req.temperature)
+            try:
+                resp = await adapter.complete(req)
+            except Exception as e:
+                span.record_exception(e)
+                span.set_attribute("llm.error", type(e).__name__)
+                raise
+            span.set_attribute("llm.input_tokens", resp.input_tokens)
+            span.set_attribute("llm.output_tokens", resp.output_tokens)
+            return resp

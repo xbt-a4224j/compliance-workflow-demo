@@ -6,6 +6,8 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from opentelemetry import trace
+
 from compliance_workflow_demo.dsl.graph import ExecutionGraph, GraphNode
 from compliance_workflow_demo.executor.check import ExecutorError, execute_check
 from compliance_workflow_demo.executor.result import CheckResult
@@ -20,6 +22,8 @@ from compliance_workflow_demo.router.router import Router
 from compliance_workflow_demo.router.types import ProviderUnavailable
 
 EventHandler = Callable[[OrchestratorEvent], Awaitable[None]]
+
+_tracer = trace.get_tracer(__name__)
 
 
 class _Cache(Protocol):
@@ -61,6 +65,28 @@ class Orchestrator:
         # endpoint matches the run_id stamped on every emitted event. Default
         # to a fresh UUID for direct-use callers (tests, scripts).
         run_id = run_id or str(uuid.uuid4())
+        leaves = [n for n in graph.nodes.values() if n.is_leaf]
+        aggregators = [n for n in graph.nodes.values() if not n.is_leaf]
+
+        with _tracer.start_as_current_span("orchestrator.run") as span:
+            span.set_attribute("run.id", run_id)
+            span.set_attribute("doc.id", doc.id)
+            span.set_attribute("doc.chunks", len(doc.chunks))
+            span.set_attribute("dag.nodes", len(graph.nodes))
+            span.set_attribute("dag.leaves", len(leaves))
+            span.set_attribute("dag.aggregators", len(aggregators))
+            span.set_attribute("dag.rules", ",".join(graph.roots.keys()))
+
+            return await self._run(graph, doc, run_id, leaves, span)
+
+    async def _run(
+        self,
+        graph: ExecutionGraph,
+        doc: Document,
+        run_id: str,
+        leaves: list[GraphNode],
+        run_span: trace.Span,
+    ) -> RunResult:
         await self._emit(OrchestratorEvent(kind="run_started", run_id=run_id))
 
         findings: dict[str, NodeFinding] = {}
@@ -69,7 +95,6 @@ class Orchestrator:
         # 1. Fan out every leaf in parallel. Iterating graph.nodes (the deduped
         # dict) — not graph.topo_order with filtering — guarantees a shared
         # leaf runs exactly once even if it appears under multiple aggregators.
-        leaves = [n for n in graph.nodes.values() if n.is_leaf]
         leaf_outcomes = await asyncio.gather(
             *(self._run_leaf(node, doc, run_id) for node in leaves)
         )
@@ -114,6 +139,11 @@ class Orchestrator:
             findings=findings,
             errors=errors,
         )
+        run_span.set_attribute("run.status", status.value)
+        run_span.set_attribute(
+            "run.rules_passed", sum(1 for v in per_rule.values() if v)
+        )
+        run_span.set_attribute("run.rules_total", len(per_rule))
         await self._emit(
             OrchestratorEvent(kind="run_finished", run_id=run_id, result=result)
         )
@@ -122,12 +152,22 @@ class Orchestrator:
     async def _run_leaf(
         self, node: GraphNode, doc: Document, run_id: str
     ) -> _LeafOutcome:
+        with _tracer.start_as_current_span(f"leaf.{node.op}") as span:
+            span.set_attribute("node.id", node.id)
+            span.set_attribute("node.op", node.op)
+            return await self._run_leaf_inner(node, doc, run_id, span)
+
+    async def _run_leaf_inner(
+        self, node: GraphNode, doc: Document, run_id: str, span: trace.Span
+    ) -> _LeafOutcome:
         await self._emit(
             OrchestratorEvent(kind="check_started", run_id=run_id, node_id=node.id)
         )
 
         cached = await self.cache.get(node.id, doc.id)
         if cached is not None:
+            span.set_attribute("cache.hit", True)
+            span.set_attribute("node.passed", cached.passed)
             finding = NodeFinding(
                 node_id=node.id,
                 op=node.op,
@@ -144,9 +184,12 @@ class Orchestrator:
             )
             return _LeafOutcome(finding=finding, error_message=None)
 
+        span.set_attribute("cache.hit", False)
         try:
             check = await execute_check(node, doc, self.router)
         except (ProviderUnavailable, ExecutorError) as e:
+            span.set_attribute("node.errored", True)
+            span.record_exception(e)
             finding = NodeFinding(
                 node_id=node.id, op=node.op, passed=False, errored=True
             )
@@ -161,6 +204,9 @@ class Orchestrator:
             return _LeafOutcome(finding=finding, error_message=f"{type(e).__name__}: {e}")
         # PermanentError is intentionally not caught — bad config aborts the run.
 
+        span.set_attribute("node.passed", check.passed)
+        if check.page_ref is not None:
+            span.set_attribute("node.page_ref", check.page_ref)
         finding = NodeFinding(
             node_id=node.id,
             op=node.op,

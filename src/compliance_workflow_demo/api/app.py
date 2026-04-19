@@ -5,14 +5,17 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from compliance_workflow_demo.api.resources import router as resources_router
 from compliance_workflow_demo.api.runs import router as runs_router
 from compliance_workflow_demo.api.state import RunRegistry
 from compliance_workflow_demo.dsl import Rule, load_rule
 from compliance_workflow_demo.ingest import Document, parse_pdf_path
+from compliance_workflow_demo.obs.tracing import configure_tracing, force_flush
 from compliance_workflow_demo.router import (
     AnthropicAdapter,
     MockAdapter,
@@ -69,9 +72,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     for run_state in app.state.registry.all():
         if run_state.task is not None and not run_state.task.done():
             run_state.task.cancel()
+    force_flush()
 
 
 def create_app() -> FastAPI:
+    # Load .env before anything reads os.environ — _build_router() at lifespan
+    # startup reads ANTHROPIC_API_KEY / OPENAI_API_KEY to decide which adapters
+    # to wire. Without this, keys that live only in .env are silently skipped.
+    load_dotenv(BACKEND_ROOT / ".env")
+    configure_tracing()
     # Move Swagger UI off /docs so our GET /docs (corpus listing) wins.
     app = FastAPI(
         title="compliance-workflow-demo",
@@ -79,6 +88,7 @@ def create_app() -> FastAPI:
         docs_url="/api-docs",
         redoc_url="/api-redoc",
     )
+    FastAPIInstrumentor.instrument_app(app)
 
     # Open CORS for the local Vite dev server (5173) and create-react-app
     # default (3000). Tightened in production; demo scope only.
