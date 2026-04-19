@@ -50,8 +50,17 @@ class Orchestrator:
     on_event: EventHandler | None = None
     cache: _Cache = field(default_factory=_NoCache)
 
-    async def run(self, graph: ExecutionGraph, doc: Document) -> RunResult:
-        run_id = str(uuid.uuid4())
+    async def run(
+        self,
+        graph: ExecutionGraph,
+        doc: Document,
+        *,
+        run_id: str | None = None,
+    ) -> RunResult:
+        # Caller can pre-generate the run_id so the value returned by an API
+        # endpoint matches the run_id stamped on every emitted event. Default
+        # to a fresh UUID for direct-use callers (tests, scripts).
+        run_id = run_id or str(uuid.uuid4())
         await self._emit(OrchestratorEvent(kind="run_started", run_id=run_id))
 
         findings: dict[str, NodeFinding] = {}
