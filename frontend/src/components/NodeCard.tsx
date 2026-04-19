@@ -28,21 +28,27 @@ interface Props {
   node: GraphNode;
   status: NodeStatus;
   finding: NodeFinding | null;
+  // False in the Rules view, where the DAG is shown for inspection only —
+  // no status pill, neutral styling, no pass/fail colour semantics.
+  showStatus?: boolean;
 }
 
-export function NodeCard({ node, status, finding }: Props) {
+export function NodeCard({ node, status, finding, showStatus = true }: Props) {
   const isLeaf = node.prompt_template !== null;
   const param = Object.values(node.params)[0] ?? "";
+  const cardClass = showStatus ? STATUS_STYLES[status] : STATUS_STYLES.pending;
   return (
     <div
-      className={`rounded-lg border-2 p-3 shadow-sm ${STATUS_STYLES[status]}`}
+      className={`rounded-lg border-2 p-3 shadow-sm ${cardClass}`}
       style={{ width: 280 }}
     >
       <div className="flex justify-between items-center mb-2 gap-2">
         <span className="font-semibold text-sm tracking-wide">{node.op}</span>
-        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${STATUS_BADGE[status]}`}>
-          {STATUS_LABEL[status]}
-        </span>
+        {showStatus && (
+          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${STATUS_BADGE[status]}`}>
+            {STATUS_LABEL[status]}
+          </span>
+        )}
       </div>
       <div className="font-mono text-[11px] text-slate-500 mb-2">{node.id.slice(0, 8)}</div>
       {isLeaf && param && (

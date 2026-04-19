@@ -29,12 +29,17 @@ interface Props {
   statuses: Record<string, NodeStatus>;
   findings: Record<string, NodeFinding | null>;
   result: RunResult | null;
+  // False when the DAG is shown purely for inspection (e.g. Rules view):
+  // tiles render without per-node status pills and skip the lane-header
+  // verdict pill too, since nothing is being executed.
+  showStatus?: boolean;
 }
 
 interface NodeData {
   node: GraphNode;
   status: NodeStatus;
   finding: NodeFinding | null;
+  showStatus: boolean;
 }
 
 interface LaneHeaderData {
@@ -42,6 +47,7 @@ interface LaneHeaderData {
   ruleName: string;
   width: number;
   status: "pending" | "passed" | "failed" | "degraded" | "running";
+  showStatus: boolean;
 }
 
 /* ---------- layout constants (hoisted so node-renderers can use them) ---------- */
@@ -57,7 +63,12 @@ const CARD_RESERVED = 280; // estimated tall-card height for layout buffer
 const dagNode = ({ data }: { data: NodeData }) => (
   <>
     <Handle type="target" position={Position.Top} className="!bg-slate-400" />
-    <NodeCard node={data.node} status={data.status} finding={data.finding} />
+    <NodeCard
+      node={data.node}
+      status={data.status}
+      finding={data.finding}
+      showStatus={data.showStatus}
+    />
     <Handle type="source" position={Position.Bottom} className="!bg-slate-400" />
   </>
 );
@@ -88,9 +99,11 @@ const laneHeader = ({ data }: { data: LaneHeaderData }) => (
         {data.ruleName}
       </div>
     </div>
-    <span className={`shrink-0 px-3 py-1 text-sm font-semibold rounded border ${STATUS_PILL[data.status]}`}>
-      {STATUS_LABEL[data.status]}
-    </span>
+    {data.showStatus && (
+      <span className={`shrink-0 px-3 py-1 text-sm font-semibold rounded border ${STATUS_PILL[data.status]}`}>
+        {STATUS_LABEL[data.status]}
+      </span>
+    )}
   </div>
 );
 
@@ -109,10 +122,10 @@ export function DagView(props: Props) {
   );
 }
 
-function DagViewInner({ graph, rules, statuses, findings, result }: Props) {
+function DagViewInner({ graph, rules, statuses, findings, result, showStatus = true }: Props) {
   const { nodes, edges } = useMemo(
-    () => buildSwimlanes(graph, rules, statuses, findings, result),
-    [graph, rules, statuses, findings, result],
+    () => buildSwimlanes(graph, rules, statuses, findings, result, showStatus),
+    [graph, rules, statuses, findings, result, showStatus],
   );
   const rf = useReactFlow();
 
@@ -167,6 +180,7 @@ function buildSwimlanes(
   statuses: Record<string, NodeStatus>,
   findings: Record<string, NodeFinding | null>,
   result: RunResult | null,
+  showStatus: boolean,
 ): { nodes: RFNode[]; edges: RFEdge[] } {
   const ruleToNodes = collectRuleSubgraphs(graph);
   const orderedRules = orderedRuleIds(graph, rules);
@@ -262,7 +276,7 @@ function buildSwimlanes(
       id: `lane-header-${h.ruleId}`,
       type: "laneHeader",
       position: { x: h.leftX, y: 0 },
-      data: { ruleId: h.ruleId, ruleName: h.ruleName, width: h.width, status },
+      data: { ruleId: h.ruleId, ruleName: h.ruleName, width: h.width, status, showStatus },
       width: h.width,
       height: HEADER_H,
       draggable: false,
@@ -280,6 +294,7 @@ function buildSwimlanes(
         node: n,
         status: statuses[n.id] ?? "pending",
         finding: findings[n.id] ?? null,
+        showStatus,
       } as NodeData,
       width: NODE_W,
       // Reserved height tracks tallest possible card; over-spec here is

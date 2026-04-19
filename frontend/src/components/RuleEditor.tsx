@@ -82,6 +82,7 @@ export function RuleEditor({ rules }: Props) {
                     statuses={{}}
                     findings={{}}
                     result={null}
+                    showStatus={false}
                   />
                 </div>
               </div>
