@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.4.0...v1.5.0) (2026-04-19)
+
+
+### Features
+
+* **executor:** atomic check via router with page-stamped evidence ([aa8679d](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/aa8679d21fdef72e36f5c58562b6492a2d54ba30)), closes [#15](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/15)
+
 # [1.4.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.3.0...v1.4.0) (2026-04-19)
 
 
