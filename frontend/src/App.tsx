@@ -1,0 +1,112 @@
+import { useEffect, useState } from "react";
+
+import { api } from "./api";
+import { DagView } from "./components/DagView";
+import { DocumentPane } from "./components/DocumentPane";
+import { RunSelector } from "./components/RunSelector";
+import { RunSummary } from "./components/RunSummary";
+import { useRunStream } from "./hooks/useRunStream";
+import type { CreateRunResponse, DocSummary, RuleSummary } from "./types";
+
+export default function App() {
+  const [rules, setRules] = useState<RuleSummary[]>([]);
+  const [docs, setDocs] = useState<DocSummary[]>([]);
+  const [docId, setDocId] = useState("");
+  const [run, setRun] = useState<CreateRunResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Bootstrap: load rules + docs once. Rules feed the swimlane labels.
+  useEffect(() => {
+    Promise.all([api.listRules(), api.listDocs()])
+      .then(([r, d]) => {
+        setRules(r);
+        setDocs(d);
+      })
+      .catch((e) => setError(String(e)));
+  }, []);
+
+  const stream = useRunStream(run?.run_id ?? null, run?.dag ?? null);
+
+  const handleRun = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      // Omitting rule_ids → backend evaluates every loaded rule in one DAG.
+      const result = await api.createRun(docId);
+      setRun(result);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      <header className="px-6 py-3 border-b border-slate-200 bg-white flex items-baseline gap-4 shadow-sm">
+        <h1 className="text-lg font-semibold tracking-tight text-slate-900">compliance-workflow-demo</h1>
+        <span className="text-sm text-slate-500">
+          Compliance rule checker · live DAG visualization
+        </span>
+      </header>
+
+      <RunSelector
+        docs={docs}
+        docId={docId}
+        busy={busy || (!!run && stream.connectionState !== "closed" && !stream.result)}
+        onDocChange={setDocId}
+        onRun={handleRun}
+      />
+
+      {error && (
+        <div className="px-6 py-3 bg-rose-50 text-rose-800 border-b border-rose-200 text-sm font-mono">
+          {error}
+        </div>
+      )}
+
+      <div className="flex-1 flex min-h-0">
+        <main className="flex-1 min-w-0 flex flex-col bg-slate-50">
+          {run ? (
+            <>
+              <div className="flex-1 min-h-0">
+                <DagView
+                  graph={run.dag}
+                  rules={rules}
+                  statuses={stream.statuses}
+                  findings={stream.findings}
+                  result={stream.result}
+                />
+              </div>
+              <div className="h-72 min-h-[18rem] max-h-[40vh] resize-y overflow-hidden">
+                <DocumentPane docId={docId} findings={stream.findings} />
+              </div>
+            </>
+          ) : (
+            <Placeholder />
+          )}
+        </main>
+        {run && (
+          <RunSummary
+            graph={run.dag}
+            rules={rules}
+            result={stream.result}
+            connectionState={stream.connectionState}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Placeholder() {
+  return (
+    <div className="h-full flex items-center justify-center px-8">
+      <div className="max-w-md text-center text-slate-500 text-base">
+        Pick a document, then click <strong className="text-slate-700">Check all rules</strong>.
+        Each rule appears as its own lane; nodes light up live as the engine
+        evaluates them.
+      </div>
+    </div>
+  );
+}

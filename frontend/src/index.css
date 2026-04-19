@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  /* Segoe UI / Windows-style system stack */
+  font-family: "Segoe UI", "SF Pro Text", -apple-system, BlinkMacSystemFont,
+               "Helvetica Neue", Roboto, system-ui, sans-serif;
+  background: #f3f3f3;
+  color: #1f1f1f;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+code, pre, .font-mono {
+  font-family: "Consolas", "SF Mono", ui-monospace, Menlo, monospace;
+}

@@ -35,3 +35,6 @@ dist/
 
 # Postgres data (docker volume)
 infra/data/
+
+# Local screenshots (scratch — not part of the project)
+img*.png
