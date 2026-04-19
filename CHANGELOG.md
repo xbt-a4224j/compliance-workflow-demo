@@ -1,3 +1,28 @@
+# 1.0.0 (2026-04-19)
+
+
+### Bug Fixes
+
+* **ci:** drop removed python-version input from setup-uv and pin cache glob ([c1a9404](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/c1a94046459bfcdeb2e1ff537e25100be2d4e699))
+* **router:** omit deprecated 'temperature' for Opus 4.x models ([558b24d](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/558b24dfcaa755f2d8a2f760448e644f225fd8a9))
+
+
+### Features
+
+* **api:** FastAPI endpoints with SSE per-run streaming ([36fde35](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/36fde3579aca6b0149118dcc76c0ce338ffa6602)), closes [#19](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/19)
+* **api:** multi-rule runs + doc-text endpoint for evidence highlighting ([65e21a4](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/65e21a42b55538686494669cc61522bee333d12c)), closes [#6](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/6)
+* **db:** postgres persistence + content-addressed findings cache ([90e6c43](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/90e6c4366df3e0c275b8dc82d9cee97111db3241)), closes [#11](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/11)
+* **dsl:** add pydantic v2 rule schema with 5 ops ([fcaeea2](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/fcaeea23aa23c8eba98546f1f67d82495bc913b0)), closes [#6](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/6)
+* **dsl:** compile rules into content-addressed atomic-check DAG ([ab3107f](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/ab3107f327872a80c32bcbe35eb7736c47fc7e4f)), closes [#12](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/12)
+* **executor:** atomic check via router with page-stamped evidence ([cd82074](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/cd82074ef4c3f41d93f753dfcfbcb3161b1e8ca4)), closes [#15](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/15)
+* **executor:** orchestrator fans out leaves and aggregates with degraded semantics ([3d21d0c](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/3d21d0c669d61fe95953e62244e449f55af658f7)), closes [#6](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/6) [#17](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/17) [#17](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/17)
+* **frontend:** React run-view UI with swimlane DAG + live SSE flips ([fc0b154](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/fc0b154940263e5cb8fa559ba589c4763f48a46c))
+* **ingest:** pypdf parser + tiktoken chunker with page-stamped DocChunks ([81e239e](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/81e239efd61dbc2f1af4822fdf41daf43960e314))
+* **obs:** wire OpenTelemetry tracing with OTLP export and smoke check ([8270192](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/8270192eddadf7bd999466f889f1b32c82242524))
+* **router:** add anthropic, openai, and mock provider adapters ([74f933c](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/74f933cc32852637b170397629d428216f35bd7a)), closes [#9](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/9)
+* **router:** add retry, circuit breaker, and failover orchestrator ([7e200bb](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/7e200bbbbf3ebbebf9f670f40eb17dca29d4a49f))
+* **rules+executor:** five FINRA-2210 rules + prompt tuning + hallucination guard ([feb94ec](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/feb94ec7fe77b879d1b12c7380a685062769b02d))
+
 # [1.9.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.8.0...v1.9.0) (2026-04-19)
 
 

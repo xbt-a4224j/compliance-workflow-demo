@@ -38,3 +38,6 @@ infra/data/
 
 # Local screenshots (scratch — not part of the project)
 img*.png
+
+# Private prep / interview notes (not part of the project artifact)
+CLAUDE.md
