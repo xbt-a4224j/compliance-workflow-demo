@@ -5,7 +5,7 @@ inputs to the system, never outputs.**
 
 | File | Origin |
 |---|---|
-| `real_prospectus_01.pdf` | **Placeholder — drop your own PDF here.** Should be a real published fund prospectus (filed with the SEC). The demo runs without it; the matrix row below assumes it passes every rule. |
+| `real_prospectus_01.pdf` | Real published fund prospectus (filed with the SEC). Passes every rule per the matrix row below — the "control" sample that proves the rules don't false-positive on compliant copy. |
 | `synth_fund_01..06.pdf` | Synthetic fund marketing one-pagers, generated from `sources/synth_fund_NN.txt` via `scripts/generate_corpus.py`. Each is engineered to violate exactly one rule per the matrix below. |
 
 ## Violation matrix (the spec)

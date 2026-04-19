@@ -1,6 +1,4 @@
--- Per-LLM-call observability. Populated by the router (instrumentation is
--- ticket #11, deferred — table ships now so the schema is locked and
--- post-#14 work doesn't need another migration).
+-- Per-LLM-call observability. Populated by the router on each call.
 CREATE TABLE IF NOT EXISTS router_calls (
     id           BIGSERIAL PRIMARY KEY,
     run_id       UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,

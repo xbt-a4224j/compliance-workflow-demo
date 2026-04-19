@@ -47,6 +47,5 @@ Run persistence is wrapped in a try/except that logs and continues if Postgres i
 
 - **Rule editor with save + validation + versioning** — the Rules tab is read-only. A real editor is three features (edit, validate, persist + version), each its own week.
 - **Distributed orchestrator** — Redis queue + worker pool. Seam is in place; implementation is out of scope.
-- **Static price table for USD cost** — `router_calls.cost_usd` column exists, isn't populated. Tokens + latency + provider are.
 - **Metrics backend (Prometheus)** — the A/B story uses Jaeger's trace API as the analytics plane. Works at this scale; production would want metrics separate from traces.
 - **Rule-level access control, signing, audit trail** — the "compliance" in the name is the *check*, not the governance around authoring. Both matter in real systems, neither is in scope here.

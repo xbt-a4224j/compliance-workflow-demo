@@ -11,7 +11,7 @@ With both set, Anthropic is primary; if it errors out, OpenAI catches.
 Usage:
     uv run python scripts/verify_matrix.py            # parallel per doc
     uv run python scripts/verify_matrix.py --serial   # one cell at a time
-                                                       # (diagnostic for #22)
+                                                       # (workaround for #22, won't-fix)
 """
 from __future__ import annotations
 
@@ -108,7 +108,7 @@ async def main() -> None:
     parser.add_argument(
         "--serial",
         action="store_true",
-        help="Run cells one at a time (slower; diagnostic for #22 noisy-neighbor flutter)",
+        help="Run cells one at a time (slower; workaround for #22 noisy-neighbor flutter, won't-fix)",
     )
     args = parser.parse_args()
 

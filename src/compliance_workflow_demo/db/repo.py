@@ -87,8 +87,7 @@ async def insert_router_call(
     latency_ms: int,
     cost_usd: float | None = None,
 ) -> None:
-    """Per-LLM-call observability. Wired in #11 (deferred); table exists now
-    so the orchestrator can be retrofitted without another migration."""
+    """Per-LLM-call observability."""
     async with conn.cursor() as cur:
         await cur.execute(
             "INSERT INTO router_calls "
