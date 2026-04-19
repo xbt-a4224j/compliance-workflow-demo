@@ -1,8 +1,11 @@
 name: Release
 
+# Manual trigger only. Re-enable auto-release on push by adding:
+#   push:
+#     branches: [main]
+# back under `on:` when a tag cadence is wanted again.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
