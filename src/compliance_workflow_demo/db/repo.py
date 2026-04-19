@@ -7,6 +7,7 @@ import psycopg
 
 from compliance_workflow_demo.executor.result import CheckResult
 from compliance_workflow_demo.executor.run import NodeFinding, RunResult, RunStatus
+from compliance_workflow_demo.router.types import RouterCallRecord
 
 
 async def insert_run(
@@ -135,8 +136,10 @@ async def persist_run(
     rule_id: str,
     doc_id: str,
     result: RunResult,
+    router_calls: Iterable[RouterCallRecord] = (),
 ) -> None:
-    """End-of-run write: a single transaction for the run row + all findings."""
+    """End-of-run write: a single transaction for the run row + all findings
+    + any per-LLM-attempt router_calls captured during the run."""
     async with conn.transaction():
         await insert_run(
             conn,
@@ -151,6 +154,17 @@ async def persist_run(
             doc_id=doc_id,
             findings=result.findings.values(),
         )
+        for rc in router_calls:
+            # Stamp the run_id the router might not have had at call time.
+            await insert_router_call(
+                conn,
+                run_id=result.run_id,
+                check_id=rc.check_id or "",
+                provider=rc.provider,
+                tokens_in=rc.tokens_in,
+                tokens_out=rc.tokens_out,
+                latency_ms=rc.latency_ms,
+            )
         await update_run_status(
             conn,
             run_id=result.run_id,

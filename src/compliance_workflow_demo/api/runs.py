@@ -15,12 +15,14 @@ from compliance_workflow_demo.api.schemas import (
     GetRunResponse,
 )
 from compliance_workflow_demo.api.state import RunState
+from compliance_workflow_demo.db.cache import NoCache, PostgresFindingsCache
 from compliance_workflow_demo.db.connection import connect
 from compliance_workflow_demo.db.repo import persist_run
 from compliance_workflow_demo.dsl import compile_rules
 from compliance_workflow_demo.executor import Orchestrator
 from compliance_workflow_demo.executor.run import OrchestratorEvent, RunResult
 from compliance_workflow_demo.router.router import Router
+from compliance_workflow_demo.router.types import RouterCallRecord
 
 router = APIRouter()
 
@@ -46,21 +48,6 @@ async def create_run(req: CreateRunRequest, request: Request) -> CreateRunRespon
     else:
         selected_rules = list(rules.values())
 
-    # Reorder adapters if primary specified; else use the shared default router.
-    if req.primary is not None:
-        primary_a = next((a for a in adapters if a.provider == req.primary), None)
-        if primary_a is None:
-            raise HTTPException(
-                status_code=400,
-                detail=f"primary {req.primary!r} not configured "
-                f"(available: {[a.provider for a in adapters]})",
-            )
-        llm_router = Router(
-            adapters=[primary_a, *[a for a in adapters if a.provider != req.primary]]
-        )
-    else:
-        llm_router = request.app.state.router
-
     graph = compile_rules(selected_rules)
     run_id = str(uuid.uuid4())
     rule_label = ",".join(r.id for r in selected_rules)
@@ -71,21 +58,57 @@ async def create_run(req: CreateRunRequest, request: Request) -> CreateRunRespon
 
     db_url = request.app.state.db_url
 
+    # Per-run Router so req.primary reorders the failover chain AND so the
+    # on_call hook collects records scoped to THIS run. Always per-run now;
+    # the shared app.state.router is effectively a template.
+    call_records: list[RouterCallRecord] = []
+
+    async def record_call(rec: RouterCallRecord) -> None:
+        call_records.append(rec)
+
+    if req.primary is not None:
+        primary_a = next((a for a in adapters if a.provider == req.primary), None)
+        if primary_a is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"primary {req.primary!r} not configured "
+                f"(available: {[a.provider for a in adapters]})",
+            )
+        ordered = [primary_a, *[a for a in adapters if a.provider != req.primary]]
+    else:
+        ordered = list(adapters)
+    llm_router = Router(adapters=ordered, on_call=record_call)
+
+    cache: NoCache | PostgresFindingsCache = (
+        PostgresFindingsCache(db_url=db_url) if db_url is not None else NoCache()
+    )
+
     async def runner() -> RunResult:
         try:
-            orch = Orchestrator(router=llm_router, on_event=on_event)
+            orch = Orchestrator(
+                router=llm_router, on_event=on_event, cache=cache
+            )
             result = await orch.run(
                 graph, doc, run_id=run_id, primary=req.primary
             )
             state.result = result
-            # Persist to Postgres if the lifespan wired it; swallow failures
-            # so a DB blip doesn't poison the run result the UI already saw.
+
+            # End-of-run write: run + findings + router_calls in one
+            # transaction. Use doc.id (sha256) not req.doc_id (stem) so the
+            # (check_id, doc_id) cache key stays content-addressed — a doc
+            # served under a different filename still hits the same cache.
+            # Swallow DB errors so a Postgres blip doesn't poison the run
+            # result the UI already streamed via SSE.
             if db_url is not None:
                 try:
                     conn = await connect(db_url)
                     try:
                         await persist_run(
-                            conn, rule_id=rule_label, doc_id=req.doc_id, result=result
+                            conn,
+                            rule_id=rule_label,
+                            doc_id=doc.id,
+                            result=result,
+                            router_calls=call_records,
                         )
                     finally:
                         await conn.close()

@@ -59,18 +59,31 @@ def _resolve_page(evidence: str | None, doc: Document) -> int | None:
     return None
 
 
-async def execute_check(node: GraphNode, doc: Document, router: Router) -> CheckResult:
+async def execute_check(
+    node: GraphNode,
+    doc: Document,
+    router: Router,
+    *,
+    run_id: str | None = None,
+) -> CheckResult:
     """Run one atomic LLM check against a document.
 
     Stitches together: node-derived check_id, LLM-derived passed/evidence/
     confidence, chunker-derived page_ref. The LLM is only trusted for the
     semantic verdict — never for ids or page numbers.
+
+    run_id (if provided) is forwarded to the router so its on_call hook can
+    record per-LLM-attempt rows for `router_calls` persistence.
     """
     if not node.is_leaf:
         raise ValueError(f"execute_check requires a leaf node, got op={node.op}")
 
     system, user = build_prompt(node, doc.joined_text())
-    response = await router.route(CompletionRequest(system=system, user=user))
+    response = await router.route(
+        CompletionRequest(system=system, user=user),
+        run_id=run_id,
+        check_id=node.id,
+    )
     answer = _parse_llm_json(response.text)
 
     page_ref = _resolve_page(answer.evidence, doc)

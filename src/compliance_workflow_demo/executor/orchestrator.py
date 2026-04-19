@@ -191,7 +191,7 @@ class Orchestrator:
 
         span.set_attribute("cache.hit", False)
         try:
-            check = await execute_check(node, doc, self.router)
+            check = await execute_check(node, doc, self.router, run_id=run_id)
         except (ProviderUnavailable, ExecutorError) as e:
             span.set_attribute("node.errored", True)
             span.record_exception(e)

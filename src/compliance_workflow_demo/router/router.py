@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 
 from opentelemetry import trace
@@ -9,9 +10,11 @@ from compliance_workflow_demo.router.retry import RetryPolicy
 from compliance_workflow_demo.router.types import (
     CompletionRequest,
     CompletionResponse,
+    OnCallHook,
     PermanentError,
     ProviderAdapter,
     ProviderUnavailable,
+    RouterCallRecord,
     TransientError,
 )
 
@@ -43,6 +46,10 @@ class Router:
     retry: RetryPolicy = field(default_factory=RetryPolicy)
     breaker_threshold: int = 3
     breaker_cooldown_s: float = 10.0
+    # Called once per LLM attempt (including retries / failover hops). Lets
+    # the API collect records for end-of-run persistence into router_calls
+    # without coupling the router to a database.
+    on_call: OnCallHook | None = None
 
     _breakers: dict[str, CircuitBreaker] = field(init=False)
 
@@ -61,7 +68,13 @@ class Router:
     def breaker_for(self, provider: str) -> CircuitBreaker:
         return self._breakers[provider]
 
-    async def route(self, req: CompletionRequest) -> CompletionResponse:
+    async def route(
+        self,
+        req: CompletionRequest,
+        *,
+        run_id: str | None = None,
+        check_id: str | None = None,
+    ) -> CompletionResponse:
         last_transient: Exception | None = None
 
         for adapter in self.adapters:
@@ -75,7 +88,8 @@ class Router:
                     with attempt:
                         attempt_num += 1
                         resp = await self._call_with_span(
-                            adapter, req, attempt_num
+                            adapter, req, attempt_num,
+                            run_id=run_id, check_id=check_id,
                         )
                 await breaker.record_success()
                 return resp
@@ -99,6 +113,9 @@ class Router:
         adapter: ProviderAdapter,
         req: CompletionRequest,
         attempt: int,
+        *,
+        run_id: str | None = None,
+        check_id: str | None = None,
     ) -> CompletionResponse:
         with _tracer.start_as_current_span(f"llm.{adapter.provider}") as span:
             span.set_attribute("llm.provider", adapter.provider)
@@ -106,12 +123,27 @@ class Router:
             span.set_attribute("llm.attempt", attempt)
             span.set_attribute("llm.max_tokens", req.max_tokens)
             span.set_attribute("llm.temperature", req.temperature)
+            t0 = time.monotonic()
             try:
                 resp = await adapter.complete(req)
             except Exception as e:
                 span.record_exception(e)
                 span.set_attribute("llm.error", type(e).__name__)
                 raise
+            latency_ms = int((time.monotonic() - t0) * 1000)
             span.set_attribute("llm.input_tokens", resp.input_tokens)
             span.set_attribute("llm.output_tokens", resp.output_tokens)
+            span.set_attribute("llm.latency_ms", latency_ms)
+
+            if self.on_call is not None:
+                await self.on_call(RouterCallRecord(
+                    run_id=run_id,
+                    check_id=check_id,
+                    provider=adapter.provider,
+                    model=adapter.model,
+                    tokens_in=resp.input_tokens,
+                    tokens_out=resp.output_tokens,
+                    latency_ms=latency_ms,
+                    attempt=attempt,
+                ))
             return resp
