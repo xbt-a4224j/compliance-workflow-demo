@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.6.0...v1.7.0) (2026-04-19)
+
+
+### Features
+
+* **db:** postgres persistence + content-addressed findings cache ([a62a9f4](https://github.com/xbt-a4224j/compliance-workflow-demo/commit/a62a9f470f6bc64b899595474b947d4ad24a85b5)), closes [#11](https://github.com/xbt-a4224j/compliance-workflow-demo/issues/11)
+
 # [1.6.0](https://github.com/xbt-a4224j/compliance-workflow-demo/compare/v1.5.0...v1.6.0) (2026-04-19)
 
 
