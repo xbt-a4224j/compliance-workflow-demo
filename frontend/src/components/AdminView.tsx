@@ -45,6 +45,12 @@ export function AdminView() {
         </div>
       )}
 
+      {!data && !error && (
+        <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
+          loading…
+        </div>
+      )}
+
       {data && data.connected && (
         <div className="p-6 space-y-6">
           <Table title="runs" rows={data.runs} />

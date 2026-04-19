@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   AUTH_EXPIRED_EVENT,
   api,
+  clearAuthToken,
   getAuthToken,
   setAuthToken,
 } from "./api";
@@ -46,24 +47,26 @@ export default function App() {
     setAuthError(null);
   };
 
-  // Block the whole app until we have a token — no partial render with
-  // half-populated state. Matches the backend's "auth required, no escape
-  // hatch" contract.
-  if (!token) {
-    return <TokenPrompt onSave={handleTokenSave} error={authError ?? undefined} />;
-  }
-
-  // Bootstrap: load rules + docs once. Rules feed the swimlane labels.
+  // Bootstrap rules + docs whenever we (re-)acquire a token — not once
+  // per App mount. Logout clears token; login sets a new one; this keeps
+  // state fresh without requiring a full page reload.
   useEffect(() => {
+    if (!token) return;
     Promise.all([api.listRules(), api.listDocs()])
       .then(([r, d]) => {
         setRules(r);
         setDocs(d);
       })
       .catch((e) => setError(String(e)));
-  }, []);
+  }, [token]);
 
   const stream = useRunStream(run?.run_id ?? null, run?.dag ?? null);
+
+  // Block the whole app until we have a token. Keep this below ALL hooks —
+  // React's rules-of-hooks require consistent hook order across renders.
+  if (!token) {
+    return <TokenPrompt onSave={handleTokenSave} error={authError ?? undefined} />;
+  }
 
   const handleRun = async () => {
     setBusy(true);
@@ -86,10 +89,28 @@ export default function App() {
         <span className="text-sm text-slate-500">
           Compliance rule checker · live DAG visualization
         </span>
-        <nav className="ml-auto flex gap-1">
+        <nav className="ml-auto flex items-center gap-1">
           <ViewTab active={view === "run"} onClick={() => setView("run")}>Run</ViewTab>
           <ViewTab active={view === "rules"} onClick={() => setView("rules")}>Rules</ViewTab>
           <ViewTab active={view === "admin"} onClick={() => setView("admin")}>Admin</ViewTab>
+          <button
+            onClick={() => {
+              clearAuthToken();
+              setToken(null);
+              setAuthError(null);
+              // Reset ephemeral UI state so re-login lands on a clean
+              // slate — avoids a stale run_id feeding back into
+              // useRunStream on the next token set.
+              setRun(null);
+              setDocId("");
+              setError(null);
+              setView("run");
+            }}
+            title="Clear token and return to the login prompt"
+            className="ml-3 px-3 py-1 rounded text-sm font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+          >
+            Log out
+          </button>
         </nav>
       </header>
 
