@@ -108,7 +108,9 @@ async def db_overview(request: Request) -> DbOverview:
         runs = await _rows(
             conn,
             "SELECT r.id, r.rule_id, r.doc_id, r.status, "
-            "       r.started_at, r.finished_at, "
+            "       r.finished_at, "
+            "       (EXTRACT(EPOCH FROM (r.finished_at - r.started_at)) * 1000)::int "
+            "         AS elapsed_ms, "
             "       ROUND(COALESCE(SUM(rc.cost_usd), 0)::numeric, 6)::float "
             "         AS cost_usd "
             "FROM runs r LEFT JOIN router_calls rc ON rc.run_id = r.id "
