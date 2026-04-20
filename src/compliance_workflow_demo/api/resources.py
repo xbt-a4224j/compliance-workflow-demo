@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Request
 
@@ -96,10 +97,7 @@ async def db_overview(request: Request) -> DbOverview:
             await cur.execute(sql)
             cols = [c.name for c in cur.description]
             return [
-                {
-                    c: (v.isoformat() if hasattr(v, "isoformat") else v)
-                    for c, v in zip(cols, row, strict=True)
-                }
+                {c: _fmt_cell(v) for c, v in zip(cols, row, strict=True)}
                 for row in await cur.fetchall()
             ]
 
@@ -178,6 +176,17 @@ async def reset_data(request: Request) -> dict[str, int]:
         n_runs, n_findings, n_router_calls,
     )
     return {"runs": n_runs, "findings": n_findings, "router_calls": n_router_calls}
+
+
+def _fmt_cell(v: object) -> object:
+    """Datetime → second-granularity UTC string ('YYYY-MM-DD HH:MM:SS').
+    AdminView header signals the timezone once, so per-row TZ offsets are
+    visual noise. Other types pass through untouched."""
+    if isinstance(v, datetime):
+        return v.astimezone(UTC).replace(microsecond=0).strftime("%Y-%m-%d %H:%M:%S")
+    if hasattr(v, "isoformat"):  # date / time without astimezone
+        return v.isoformat()
+    return v
 
 
 def _extract_title(stem: str, doc) -> str:

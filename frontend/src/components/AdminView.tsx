@@ -43,7 +43,7 @@ export function AdminView() {
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-slate-50 overflow-y-auto">
       <div className="px-6 py-3 border-b border-slate-200 bg-white flex items-center gap-4">
-        <span className="text-sm text-slate-500">Postgres — last 20 rows per table</span>
+        <span className="text-sm text-slate-500">Postgres — last 20 rows per table · timestamps in UTC</span>
         <button
           onClick={reset}
           disabled={resetting || !data?.connected}
