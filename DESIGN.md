@@ -36,7 +36,7 @@ LLMs hallucinate page numbers. The chunker stamps real pages onto every `DocChun
 
 ## 6. OpenTelemetry covers HTTP → LLM in one trace
 
-FastAPIInstrumentor wraps every request. The orchestrator span is a child of the HTTP span (context propagates through `asyncio.create_task`). Each leaf gets its own span, each LLM attempt gets its own span inside the leaf. One `POST /runs` = one trace, typically 20+ spans, deep enough to answer "what happened" without crosschecking service logs. Trade-off: span cardinality scales with DAG size. Win: Jaeger Compare view + tag search cover the A/B analysis without a separate dashboard (see `scripts/ab-bench.py` for the "don't build a dashboard" move).
+FastAPIInstrumentor wraps every request. The orchestrator span is a child of the HTTP span (context propagates through `asyncio.create_task`). Each leaf gets its own span, each LLM attempt gets its own span inside the leaf. One `POST /runs` = one trace, typically 20+ spans, deep enough to answer "what happened" without crosschecking service logs. Trade-off: span cardinality scales with DAG size. Win: Jaeger Compare view + tag search cover the A/B analysis without a separate dashboard.
 
 ## 7. Best-effort DB persistence
 

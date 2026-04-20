@@ -1,8 +1,8 @@
 # compliance-workflow-demo
 
-Compiles lawyer-written compliance rules (YAML) into a DAG of atomic LLM checks, runs them against SEC prospectuses, and reports pass / fail / degraded per rule. Retries, circuit breakers, and provider failover live underneath; OpenTelemetry spans run from the HTTP handler down to each LLM call.
+Compiles lawyer-written compliance rules (YAML) into a DAG of atomic LLM checks, runs them against SEC prospectuses, and reports pass / fail / degraded per rule. Retries and Anthropic → OpenAI failover live underneath; OpenTelemetry spans run from the HTTP handler down to each LLM call.
 
-![Run view with live DAG]![img.png](scripts/outputs/img.png)
+![Run view with live DAG](scripts/outputs/img.png)
 
 ## Why this shape
 
@@ -67,6 +67,6 @@ tests/        pytest — 127 tests, hits Postgres + real DSL
 - `src/compliance_workflow_demo/dsl/graph.py` — content-addressed node ID (sha256 of `{op, params, sorted(child_ids)}`) is what unlocks DAG sharing + cross-run caching.
 - `src/compliance_workflow_demo/router/router.py` — the failover→retry nesting; PermanentError skips both layers.
 - `src/compliance_workflow_demo/executor/check.py` — `_resolve_page` + the FORBIDS_PHRASE hallucination guard. Page refs come from the chunker, never from the LLM.
-- `scripts/ab-bench.py` — a short script that pulls the A/B answer out of Jaeger's HTTP API instead of bolting on a metrics dashboard.
+- `scripts/ab-bench.py` — pulls per-run `orchestrator.run` durations from Jaeger's HTTP API and prints a stats table per provider.
 
 See [`DESIGN.md`](DESIGN.md) for the rationale and what was deliberately left out.
