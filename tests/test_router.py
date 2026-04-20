@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 
 from compliance_workflow_demo.router import (
-    BreakerState,
     CompletionRequest,
     CompletionResponse,
     MockAdapter,
@@ -83,50 +82,6 @@ async def test_all_providers_transient_raises_provider_unavailable():
 
     assert len(primary.calls) == 2
     assert len(fallback.calls) == 2
-
-
-@pytest.mark.asyncio
-async def test_breaker_opens_after_repeated_failures_then_skips_provider():
-    primary = MockAdapter(provider="primary", raises=TransientError("blip"))
-    fallback = MockAdapter(provider="fallback", responder=lambda _r: _resp("fallback"))
-    router = Router(
-        adapters=[primary, fallback],
-        retry=_fast_retry(max_attempts=2),
-        breaker_threshold=2,           # trip on 2 consecutive transient exhaustions
-        breaker_cooldown_s=999.0,      # don't recover during the test
-    )
-
-    # First two routes: primary attempted (and burns retries), fallback succeeds.
-    await router.route(_req())
-    await router.route(_req())
-
-    # Primary breaker should now be OPEN.
-    assert router.breaker_for("primary").state is BreakerState.OPEN
-
-    # Third route: primary skipped entirely; primary call count unchanged.
-    primary_calls_before = len(primary.calls)
-    resp = await router.route(_req())
-
-    assert resp.provider == "fallback"
-    assert len(primary.calls) == primary_calls_before
-
-
-@pytest.mark.asyncio
-async def test_permanent_error_does_not_trip_breaker():
-    primary = MockAdapter(provider="primary", raises=PermanentError("auth"))
-    fallback = MockAdapter(provider="fallback", responder=lambda _r: _resp("fallback"))
-    router = Router(
-        adapters=[primary, fallback],
-        retry=_fast_retry(),
-        breaker_threshold=1,
-    )
-
-    for _ in range(3):
-        with pytest.raises(PermanentError):
-            await router.route(_req())
-
-    # Breaker still CLOSED — permanent errors are not outage signals.
-    assert router.breaker_for("primary").state is BreakerState.CLOSED
 
 
 @pytest.mark.asyncio

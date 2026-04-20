@@ -16,16 +16,15 @@ Prompting the whole thing to a frontier model gets you a confident paragraph wit
 
 Every node's ID is `sha256(canonical_json({op, params, sorted(child_ids)}))`, computed bottom-up. Implication: any leaf that's textually identical across rules collapses to one node. `(check_id, doc_id)` becomes a globally unique cache key, so re-running the same rule against the same doc is a DB lookup, not an LLM call. Trade-off: the IDs are opaque hex strings in logs. Win: caching and dedup both fall out for free.
 
-## 3. Router nesting: failover → breaker → retry
+## 3. Router nesting: failover → retry
 
 ```
-for adapter in adapters:        # failover  (outermost)
-    if breaker.allow():         # breaker   (middle)
-        async for attempt:      # retry     (innermost)
-            adapter.complete()
+for adapter in adapters:        # failover  (outer)
+    async for attempt:          # retry     (inner)
+        adapter.complete()
 ```
 
-The order isn't arbitrary. Retry is innermost because it's "this call got unlucky, try again on the same provider." Breaker gates that, so a persistently sick provider doesn't burn retry budget. Failover is outermost because its job is to *skip* open breakers. Reverse any pair and the layers cancel: put breaker inside retry and retry will re-open it; put failover inside breaker and failover never fires. Trade-off: harder to test in isolation. Win: predictable behavior under real outages.
+Retry handles "this call got unlucky, try again on the same provider." Failover wraps it: once retry exhausts on one provider, move to the next. PermanentError (4xx-shaped) skips both layers — bad config / bad request, never worth retrying or failing over.
 
 ## 4. In-process fan-out via `asyncio.gather`
 
@@ -47,5 +46,6 @@ Run persistence is wrapped in a try/except that logs and continues if Postgres i
 
 - **Rule editor with save + validation + versioning** — the Rules tab is read-only. A real editor is three features (edit, validate, persist + version), each its own week.
 - **Distributed orchestrator** — Redis queue + worker pool. Seam is in place; implementation is out of scope.
+- **Per-provider circuit breaker** — removed. Was structurally non-functional because the Router is constructed per-request, so the failure counter reset every call (the breaker's whole point is cross-call state). A real implementation needs an app-state singleton; not worth the operational complexity at demo scale, and retry+failover already handle every failure mode you can demo without manually killing an LLM endpoint.
 - **Metrics backend (Prometheus)** — the A/B story uses Jaeger's trace API as the analytics plane. Works at this scale; production would want metrics separate from traces.
 - **Rule-level access control, signing, audit trail** — the "compliance" in the name is the *check*, not the governance around authoring. Both matter in real systems, neither is in scope here.

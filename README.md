@@ -10,7 +10,7 @@ A compliance rule isn't really one yes/no question — it's usually three or fou
 
 ![Rules tab — authored YAML next to the compiled DAG](scripts/outputs/rule_view.png)
 
-LLMs are unreliable in a second dimension: the providers themselves. Every atomic check goes through a router with per-provider circuit breakers, exponential-backoff retries, and Anthropic → OpenAI failover — so a single 529 doesn't fail the run, but a persistently sick provider gets stopped being hammered.
+LLMs are unreliable in a second dimension: the providers themselves. Every atomic check goes through a router with exponential-backoff retries on each provider and Anthropic → OpenAI failover — so a single 529 doesn't fail the run, and once retries exhaust the next provider takes over.
 
 ## Quick start
 
@@ -46,7 +46,7 @@ For visual side-by-side of single traces, `./scripts/ab-compare.sh` posts two ru
 ```
 src/compliance_workflow_demo/
   dsl/        rule schema + compiler (content-addressed node IDs)
-  router/     provider adapters, breaker, retry, failover
+  router/     provider adapters, retry, failover
   executor/   atomic check + orchestrator (fans out via asyncio.gather)
   ingest/     PDF chunking with page-stamped DocChunks
   db/         psycopg-3 persistence (runs, findings, router_calls)
@@ -65,7 +65,7 @@ tests/        pytest — 127 tests, hits Postgres + real DSL
 ## Points of interest
 
 - `src/compliance_workflow_demo/dsl/graph.py` — content-addressed node ID (sha256 of `{op, params, sorted(child_ids)}`) is what unlocks DAG sharing + cross-run caching.
-- `src/compliance_workflow_demo/router/router.py` — the failover→breaker→retry nesting, with a docstring explaining why reversing any pair cancels the layers out.
+- `src/compliance_workflow_demo/router/router.py` — the failover→retry nesting; PermanentError skips both layers.
 - `src/compliance_workflow_demo/executor/check.py` — `_resolve_page` + the FORBIDS_PHRASE hallucination guard. Page refs come from the chunker, never from the LLM.
 - `scripts/ab-bench.py` — a short script that pulls the A/B answer out of Jaeger's HTTP API instead of bolting on a metrics dashboard.
 

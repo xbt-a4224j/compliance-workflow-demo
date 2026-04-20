@@ -35,7 +35,7 @@ class PermanentError(RouterError):
 
 
 class ProviderUnavailable(RouterError):
-    """Raised by the router when every provider exhausts its retries/breaker."""
+    """Raised by the router when every provider exhausts its retries."""
 
 
 class ProviderAdapter(Protocol):
