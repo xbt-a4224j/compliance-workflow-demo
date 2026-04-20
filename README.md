@@ -2,7 +2,7 @@
 
 Compiles lawyer-written compliance rules (YAML) into a DAG of atomic LLM checks, runs them against SEC prospectuses, and reports pass / fail / degraded per rule. Retries and Anthropic → OpenAI failover live underneath; OpenTelemetry spans run from the HTTP handler down to each LLM call.
 
-![Run view with live DAG](scripts/outputs/img.png)
+![Run view with live DAG](scripts/outputs/run_view.png)
 
 ## Why this shape
 
