@@ -15,11 +15,12 @@ from compliance_workflow_demo.api.schemas import (
     GetRunResponse,
 )
 from compliance_workflow_demo.api.state import RunState
-from compliance_workflow_demo.db.cache import NoCache, PostgresFindingsCache
+from compliance_workflow_demo.db.cache import PostgresFindingsCache
 from compliance_workflow_demo.db.connection import connect
 from compliance_workflow_demo.db.repo import persist_run
 from compliance_workflow_demo.dsl import compile_rules
 from compliance_workflow_demo.executor import Orchestrator
+from compliance_workflow_demo.executor.cache import FindingsCache, NoCache
 from compliance_workflow_demo.executor.run import OrchestratorEvent, RunResult
 from compliance_workflow_demo.router.router import Router
 from compliance_workflow_demo.router.types import RouterCallRecord
@@ -80,7 +81,7 @@ async def create_run(req: CreateRunRequest, request: Request) -> CreateRunRespon
         ordered = list(adapters)
     llm_router = Router(adapters=ordered, on_call=record_call)
 
-    cache: NoCache | PostgresFindingsCache = (
+    cache: FindingsCache = (
         PostgresFindingsCache(db_url=db_url)
         if db_url is not None and not req.skip_cache
         else NoCache()

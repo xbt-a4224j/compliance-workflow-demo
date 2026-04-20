@@ -4,13 +4,12 @@ import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Protocol
 
 from opentelemetry import trace
 
 from compliance_workflow_demo.dsl.graph import ExecutionGraph, GraphNode
+from compliance_workflow_demo.executor.cache import FindingsCache, NoCache
 from compliance_workflow_demo.executor.check import ExecutorError, execute_check
-from compliance_workflow_demo.executor.result import CheckResult
 from compliance_workflow_demo.executor.run import (
     NodeFinding,
     OrchestratorEvent,
@@ -24,15 +23,6 @@ from compliance_workflow_demo.router.types import ProviderUnavailable
 EventHandler = Callable[[OrchestratorEvent], Awaitable[None]]
 
 _tracer = trace.get_tracer(__name__)
-
-
-class _Cache(Protocol):
-    async def get(self, check_id: str, doc_id: str) -> CheckResult | None: ...
-
-
-class _NoCache:
-    async def get(self, check_id: str, doc_id: str) -> CheckResult | None:
-        return None
 
 
 @dataclass
@@ -52,7 +42,7 @@ class Orchestrator:
 
     router: Router
     on_event: EventHandler | None = None
-    cache: _Cache = field(default_factory=_NoCache)
+    cache: FindingsCache = field(default_factory=NoCache)
 
     async def run(
         self,
